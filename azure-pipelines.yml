@@ -1,0 +1,268 @@
+# Azure DevOps Pipeline for EduPlatform
+# Builds and deploys both frontend and backend
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    exclude:
+    - README.md
+    - docs/*
+
+variables:
+  # Build Configuration
+  buildConfiguration: 'Release'
+  nodeVersion: '18.x'
+  
+  # Azure Configuration
+  azureSubscription: 'EduPlatform-ServiceConnection'
+  resourceGroupName: 'eduplatform-rg'
+  
+  # Backend Configuration
+  backendAppName: 'eduplatform-api'
+  backendAppServicePlan: 'eduplatform-plan'
+  
+  # Frontend Configuration
+  frontendAppName: 'eduplatform-web'
+  frontendAppServicePlan: 'eduplatform-frontend-plan'
+  
+  # Storage Configuration
+  storageAccountName: 'eduplatformstorage'
+  cosmosDbAccountName: 'eduplatform-cosmos'
+
+stages:
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: BuildBackend
+    displayName: 'Build Backend'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: $(nodeVersion)
+      displayName: 'Install Node.js'
+
+    - script: |
+        cd backend
+        npm ci
+        npm run lint
+        npm run test
+        npm run build
+      displayName: 'Install dependencies, lint, test, and build backend'
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'backend'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/backend-$(Build.BuildId).zip'
+        replaceExistingArchive: true
+      displayName: 'Archive backend files'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/backend-$(Build.BuildId).zip'
+        ArtifactName: 'backend'
+        publishLocation: 'Container'
+      displayName: 'Publish backend artifact'
+
+  - job: BuildFrontend
+    displayName: 'Build Frontend'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: $(nodeVersion)
+      displayName: 'Install Node.js'
+
+    - script: |
+        npm ci
+        npm run lint
+        npm run build
+      displayName: 'Install dependencies, lint, and build frontend'
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'dist'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/frontend-$(Build.BuildId).zip'
+        replaceExistingArchive: true
+      displayName: 'Archive frontend build'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/frontend-$(Build.BuildId).zip'
+        ArtifactName: 'frontend'
+        publishLocation: 'Container'
+      displayName: 'Publish frontend artifact'
+
+- stage: DeployDev
+  displayName: 'Deploy to Development'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  
+  jobs:
+  - deployment: DeployBackendDev
+    displayName: 'Deploy Backend to Development'
+    environment: 'development'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appType: 'webAppLinux'
+              appName: '$(backendAppName)-dev'
+              package: '$(Pipeline.Workspace)/backend/backend-$(Build.BuildId).zip'
+              runtimeStack: 'NODE|18-lts'
+              appSettings: |
+                -NODE_ENV development
+                -PORT 8000
+                -MONGODB_URI $(MONGODB_URI_DEV)
+                -JWT_SECRET $(JWT_SECRET)
+                -AZURE_STORAGE_CONNECTION_STRING $(AZURE_STORAGE_CONNECTION_STRING)
+                -STRIPE_SECRET_KEY $(STRIPE_SECRET_KEY_TEST)
+                -SENDGRID_API_KEY $(SENDGRID_API_KEY)
+            displayName: 'Deploy Backend to Azure App Service'
+
+  - deployment: DeployFrontendDev
+    displayName: 'Deploy Frontend to Development'
+    environment: 'development'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureStaticWebApp@0
+            inputs:
+              azureSubscription: $(azureSubscription)
+              app_location: '/'
+              api_location: ''
+              output_location: 'dist'
+              azure_static_web_apps_api_token: $(AZURE_STATIC_WEB_APPS_API_TOKEN_DEV)
+            displayName: 'Deploy Frontend to Azure Static Web Apps'
+
+- stage: DeployProd
+  displayName: 'Deploy to Production'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  
+  jobs:
+  - deployment: DeployBackendProd
+    displayName: 'Deploy Backend to Production'
+    environment: 'production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appType: 'webAppLinux'
+              appName: $(backendAppName)
+              package: '$(Pipeline.Workspace)/backend/backend-$(Build.BuildId).zip'
+              runtimeStack: 'NODE|18-lts'
+              appSettings: |
+                -NODE_ENV production
+                -PORT 8000
+                -MONGODB_URI $(MONGODB_URI_PROD)
+                -JWT_SECRET $(JWT_SECRET)
+                -AZURE_STORAGE_CONNECTION_STRING $(AZURE_STORAGE_CONNECTION_STRING)
+                -STRIPE_SECRET_KEY $(STRIPE_SECRET_KEY_LIVE)
+                -SENDGRID_API_KEY $(SENDGRID_API_KEY)
+                -AZURE_AD_B2C_TENANT_ID $(AZURE_AD_B2C_TENANT_ID)
+                -AZURE_AD_B2C_CLIENT_ID $(AZURE_AD_B2C_CLIENT_ID)
+                -AZURE_AD_B2C_CLIENT_SECRET $(AZURE_AD_B2C_CLIENT_SECRET)
+            displayName: 'Deploy Backend to Azure App Service'
+
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Restart the app service to ensure new settings take effect
+                az webapp restart --name $(backendAppName) --resource-group $(resourceGroupName)
+                
+                # Run database migrations if needed
+                # az webapp ssh --name $(backendAppName) --resource-group $(resourceGroupName) --command "npm run migrate"
+            displayName: 'Post-deployment tasks'
+
+  - deployment: DeployFrontendProd
+    displayName: 'Deploy Frontend to Production'
+    environment: 'production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureStaticWebApp@0
+            inputs:
+              azureSubscription: $(azureSubscription)
+              app_location: '/'
+              api_location: ''
+              output_location: 'dist'
+              azure_static_web_apps_api_token: $(AZURE_STATIC_WEB_APPS_API_TOKEN_PROD)
+            displayName: 'Deploy Frontend to Azure Static Web Apps'
+
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Purge CDN cache
+                az cdn endpoint purge --content-paths "/*" --name eduplatform-cdn --profile-name eduplatform-cdn-profile --resource-group $(resourceGroupName)
+            displayName: 'Purge CDN cache'
+
+- stage: RunTests
+  displayName: 'Run Integration Tests'
+  dependsOn: DeployDev
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  
+  jobs:
+  - job: IntegrationTests
+    displayName: 'Run Integration Tests'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: $(nodeVersion)
+      displayName: 'Install Node.js'
+
+    - script: |
+        cd backend
+        npm ci
+        npm run test:integration
+      env:
+        TEST_API_URL: 'https://$(backendAppName)-dev.azurewebsites.net'
+        TEST_FRONTEND_URL: 'https://$(frontendAppName)-dev.azurestaticapps.net'
+      displayName: 'Run integration tests'
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'backend/test-results.xml'
+        failTaskOnFailedTests: true
+      displayName: 'Publish test results'
