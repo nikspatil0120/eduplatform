@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import googleAuthService from '../services/googleAuth'
 import toast from 'react-hot-toast'
+import { clearUserDataIfDifferentUser, clearUserSpecificData } from '../utils/userSession'
 
 export const AuthContext = createContext()
 
@@ -67,34 +68,72 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       
-      // Parse the JWT token from Google
-      const userInfo = googleAuthService.parseJWT(response.credential)
-      
-      if (userInfo) {
-        const userData = {
-          id: userInfo.sub,
-          name: userInfo.name,
-          email: userInfo.email,
-          avatar: userInfo.picture,
-          role: 'student',
-          provider: 'google'
+      // Exchange Google ID token for backend JWT
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1'
+      const res = await fetch(`${apiBase}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: response.credential })
+      })
+      const data = await res.json()
+      if (data?.success && data?.data?.token) {
+        // Clear previous user's data only if different user
+        await clearUserDataIfDifferentUser(data.data.user)
+        
+        setUser(data.data.user)
+        localStorage.setItem('authToken', data.data.token)
+        if (data.data.refreshToken) localStorage.setItem('refreshToken', data.data.refreshToken)
+        localStorage.setItem('userData', JSON.stringify(data.data.user))
+        toast.success(`Welcome, ${data.data.user?.name || 'Learner'}!`)
+      } else {
+        // Fallback: still set parsed Google user for UI, but without server auth it won't enroll
+        const userInfo = googleAuthService.parseJWT(response.credential)
+        if (userInfo) {
+          const userData = {
+            id: userInfo.sub,
+            name: userInfo.name,
+            email: userInfo.email,
+            avatar: userInfo.picture,
+            role: 'student',
+            provider: 'google'
+          }
+          setUser(userData)
+          localStorage.setItem('authToken', 'google-oauth-token')
+          localStorage.setItem('userData', JSON.stringify(userData))
+          toast.success(`Welcome, ${userData.name}!`)
         }
-        
-        setUser(userData)
-        localStorage.setItem('authToken', response.credential)
-        localStorage.setItem('userData', JSON.stringify(userData))
-        
-        toast.success(`Welcome, ${userData.name}!`)
+        // Extra diagnostics toast
+        try {
+          const health = await fetch(`${apiBase}/system/health`)
+          if (!health.ok) {
+            toast.error('Google sign-in failed. API health check failed. Please start backend.')
+          } else {
+            toast.error(data?.message || 'Google sign-in failed on server. Check GOOGLE_CLIENT_ID match on frontend/backend.')
+          }
+        } catch (_) {
+          toast.error('Google sign-in failed. Cannot reach API. Is backend running?')
+        }
       }
     } catch (error) {
       console.error('Google auth error:', error)
-      toast.error('Failed to sign in with Google')
+      // Try to detect backend connectivity issues
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1'
+      try {
+        const health = await fetch(`${apiBase}/system/health`)
+        if (!health.ok) {
+          toast.error('Failed to sign in with Google. API health check failed. Please start backend.')
+        } else {
+          toast.error('Failed to sign in with Google. Please try again.')
+        }
+      } catch (_) {
+        toast.error('Failed to sign in with Google. Cannot reach API. Is backend running?')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const login = async (email, password) => {
+  const login = async (email, _password) => {
     // Simulate traditional email/password login
     setLoading(true)
     try {
@@ -107,6 +146,10 @@ export const AuthProvider = ({ children }) => {
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
         provider: 'email'
       }
+      
+      // Clear previous user's data only if different user
+      await clearUserDataIfDifferentUser(mockUser)
+      
       setUser(mockUser)
       localStorage.setItem('authToken', 'mock-jwt-token')
       localStorage.setItem('userData', JSON.stringify(mockUser))
@@ -118,7 +161,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const signup = async (name, email, password) => {
+  const signup = async (name, email, _password) => {
     // Simulate traditional email/password signup
     setLoading(true)
     try {
@@ -130,6 +173,10 @@ export const AuthProvider = ({ children }) => {
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
         provider: 'email'
       }
+      
+      // Clear previous user's data only if different user
+      await clearUserDataIfDifferentUser(mockUser)
+      
       setUser(mockUser)
       localStorage.setItem('authToken', 'mock-jwt-token')
       localStorage.setItem('userData', JSON.stringify(mockUser))
@@ -141,10 +188,11 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const sendOTP = async (email, purpose = 'login') => {
+  const sendOTP = async (email, purpose = 'login', name = 'User') => {
     try {
       setLoading(true)
       
+      // First, call backend to generate and store OTP
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/send-otp`, {
         method: 'POST',
         headers: {
@@ -156,7 +204,21 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json()
       
       if (data.success) {
-        toast.success('OTP sent to your email!')
+        // Try to send email via frontend EmailJS
+        try {
+          const emailService = (await import('../services/emailService.js')).default
+          const emailResult = await emailService.sendOTPEmail(email, data.data.otp, name)
+          
+          if (emailResult.success) {
+            toast.success('OTP sent to your email!')
+          } else {
+            toast.success('OTP generated! Check backend logs for the code.')
+          }
+        } catch (emailError) {
+          console.warn('EmailJS failed, but OTP is generated:', emailError)
+          toast.success('OTP generated! Check backend logs for the code.')
+        }
+        
         return { success: true, data: data.data }
       } else {
         toast.error(data.message || 'Failed to send OTP')
@@ -187,6 +249,9 @@ export const AuthProvider = ({ children }) => {
       
       if (data.success) {
         if (data.data.user) {
+          // Clear previous user's data only if different user
+          await clearUserDataIfDifferentUser(data.data.user)
+          
           setUser(data.data.user)
           localStorage.setItem('authToken', data.data.token)
           localStorage.setItem('userData', JSON.stringify(data.data.user))
@@ -206,7 +271,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const resendOTP = async (email, purpose = 'login') => {
+  const resendOTP = async (email, purpose = 'login', name = 'User') => {
     try {
       setLoading(true)
       
@@ -221,7 +286,21 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json()
       
       if (data.success) {
-        toast.success('New OTP sent to your email!')
+        // Try to send email via frontend EmailJS
+        try {
+          const emailService = (await import('../services/emailService.js')).default
+          const emailResult = await emailService.sendOTPEmail(email, data.data.otp, name)
+          
+          if (emailResult.success) {
+            toast.success('New OTP sent to your email!')
+          } else {
+            toast.success('New OTP generated! Check backend logs for the code.')
+          }
+        } catch (emailError) {
+          console.warn('EmailJS failed, but OTP is generated:', emailError)
+          toast.success('New OTP generated! Check backend logs for the code.')
+        }
+        
         return { success: true }
       } else {
         toast.error(data.message || 'Failed to resend OTP')
@@ -239,9 +318,51 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async () => {
     try {
       setLoading(true)
+      
+      // Use the signIn method which now returns user info with ID token
       const userInfo = await googleAuthService.signIn()
       
       if (userInfo && userInfo.email) {
+        // Try to authenticate with backend using Google user info
+        try {
+          console.log('🔄 Attempting backend authentication...')
+          const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1'
+          const res = await fetch(`${apiBase}/auth/google-oauth`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              googleId: userInfo.id,
+              email: userInfo.email,
+              name: userInfo.name,
+              avatar: userInfo.avatar
+            })
+          })
+          
+          console.log('📡 Backend response status:', res.status)
+          const data = await res.json()
+          console.log('📡 Backend response data:', data)
+          
+          if (data?.success && data?.data?.token) {
+            console.log('✅ Backend authentication successful!')
+            // Clear previous user's data only if different user
+            await clearUserDataIfDifferentUser(data.data.user)
+            
+            console.log('✅ Setting user state:', data.data.user)
+            setUser(data.data.user)
+            localStorage.setItem('authToken', data.data.token)
+            if (data.data.refreshToken) localStorage.setItem('refreshToken', data.data.refreshToken)
+            localStorage.setItem('userData', JSON.stringify(data.data.user))
+            toast.success(`Welcome, ${data.data.user?.name || 'Learner'}!`)
+            console.log('✅ Returning success from backend auth')
+            return { success: true, user: data.data.user }
+          } else {
+            console.warn('❌ Backend authentication failed:', data?.message || 'Unknown error')
+          }
+        } catch (backendError) {
+          console.warn('❌ Backend authentication error:', backendError)
+        }
+        
+        // Fallback: use frontend-only authentication (limited functionality)
         const userData = {
           id: userInfo.id,
           name: userInfo.name,
@@ -251,11 +372,16 @@ export const AuthProvider = ({ children }) => {
           provider: 'google'
         }
         
+        // Clear previous user's data only if different user
+        await clearUserDataIfDifferentUser(userData)
+        
+        console.log('✅ Setting user state (fallback):', userData)
         setUser(userData)
-        localStorage.setItem('authToken', 'google-oauth-token')
+        localStorage.setItem('authToken', 'frontend-only-token')
         localStorage.setItem('userData', JSON.stringify(userData))
         
-        toast.success(`Welcome, ${userData.name}!`)
+        toast.success(`Welcome, ${userData.name}! (Limited features - backend unavailable)`)
+        console.log('✅ Returning success from fallback auth')
         return { success: true, user: userData }
       } else {
         toast.error('Google sign-in failed. Please try again.')
@@ -264,10 +390,14 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Google OAuth error:', error)
       
-      // Check if it's a configuration issue
+      // Check if it's a configuration issue or user action
       if (error.message.includes('popup_failed_to_open') || error.message.includes('origin is not allowed')) {
         toast.error('Google OAuth needs configuration. Please use email OTP login for now.', {
           duration: 4000,
+        })
+      } else if (error.message.includes('popup_closed')) {
+        toast.error('Google sign-in was cancelled. Please try again and complete the sign-in process.', {
+          duration: 3000,
         })
       } else {
         toast.error('Failed to sign in with Google. Please try again.')
@@ -295,6 +425,9 @@ export const AuthProvider = ({ children }) => {
 
       if (data.success) {
         const { user, token, refreshToken } = data.data
+        
+        // Clear previous user's data only if different user
+        await clearUserDataIfDifferentUser(user)
         
         // Store tokens
         localStorage.setItem('authToken', token)
@@ -324,6 +457,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('authToken')
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('userData')
+      
+      // Clear user-specific data on logout
+      await clearUserSpecificData()
+      
       toast.success('Signed out successfully')
     } catch (error) {
       console.error('Logout error:', error)

@@ -14,19 +14,28 @@ import {
 } from 'lucide-react'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../contexts/AuthContext'
+import { useNotifications } from '../../hooks/useNotifications'
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const { unreadCount } = useNotifications()
   const { isDark, toggleTheme } = useTheme()
   const { user, logout, isAuthenticated } = useAuth()
   const location = useLocation()
+  const [showSearch, setShowSearch] = useState(false)
+  const [query, setQuery] = useState('')
+  const [showNotifications, setShowNotifications] = useState(false)
+  const demoNotifications = [
+    { id: 'n1', title: 'Certificate issued', body: 'Your course certificate is ready.', time: 'Just now' },
+    { id: 'n2', title: 'New reply', body: 'Someone replied to your discussion.', time: '2h ago' },
+  ]
 
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'Courses', href: '/courses' },
     { name: 'Dashboard', href: '/dashboard', auth: true },
-    { name: 'Notes', href: '/notes', auth: true },
+
   ]
 
   const isActive = (path) => location.pathname === path
@@ -71,13 +80,41 @@ const Navbar = () => {
           {/* Right side items */}
           <div className="flex items-center space-x-4">
             {/* Search */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <Search className="h-5 w-5" />
-            </motion.button>
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowSearch(!showSearch)}
+                className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Search className="h-5 w-5" />
+              </motion.button>
+              <AnimatePresence>
+                {showSearch && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 border dark:border-gray-700"
+                  >
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          window.location.href = `/courses?search=${encodeURIComponent(query.trim())}`
+                          setShowSearch(false)
+                        }
+                      }}
+                      placeholder="Search courses, instructors..."
+                      className="w-full rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+                    />
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">Press Enter to search</div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Theme Toggle */}
             <motion.button
@@ -92,14 +129,23 @@ const Navbar = () => {
             {isAuthenticated ? (
               <>
                 {/* Notifications */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
-                >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
-                </motion.button>
+                <div className="relative">
+                  <Link to="/notifications">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </motion.button>
+                  </Link>
+
+                </div>
 
                 {/* User Menu */}
                 <div className="relative">

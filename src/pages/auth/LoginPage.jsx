@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, BookOpen } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -13,8 +13,18 @@ const LoginPage = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('🔄 User already authenticated, redirecting to dashboard...')
+      const from = location.state?.from?.pathname || '/dashboard'
+      navigate(from, { replace: true })
+    }
+  }, [isAuthenticated, user, navigate, location.state?.from?.pathname])
 
   const [step, setStep] = useState('email') // 'email' or 'otp'
   const [otpCode, setOtpCode] = useState('')
@@ -43,7 +53,8 @@ const LoginPage = () => {
     try {
       const result = await verifyOTP(formData.email, otpCode, 'login')
       if (result.success) {
-        navigate('/dashboard')
+        const from = location.state?.from?.pathname || location.state?.from || '/dashboard'
+        navigate(from, { replace: true })
       }
     } catch (error) {
       toast.error('An error occurred during verification')
@@ -220,25 +231,6 @@ const LoginPage = () => {
 
             <div className="mt-6 space-y-3">
               <GoogleSignInButton text="Sign in with Google" />
-              
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  toast.info('Microsoft sign-in coming soon!')
-                }}
-                className="w-full inline-flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
-                  <path fill="currentColor" d="M12.255 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96h-3.98v3.09C3.515 21.3 7.565 24 12.255 24z"/>
-                  <path fill="currentColor" d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 000 10.76l3.98-3.09z"/>
-                  <path fill="currentColor" d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0c-4.69 0-8.74 2.7-10.71 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
-                </svg>
-                Sign in with Microsoft
-              </motion.button>
             </div>
           </div>
 

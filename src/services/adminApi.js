@@ -7,6 +7,16 @@ class AdminAPI {
     return response.data
   }
 
+  async getEnrolledUsers() {
+    const response = await api.get('/admin/stats/active-users')
+    return response.data
+  }
+
+  async getUserEnrollments(userId) {
+    const response = await api.get(`/admin/enrollments/${userId}`)
+    return response.data
+  }
+
   // User Management
   async getUsers(params = {}) {
     const response = await api.get('/admin/users', { params })
@@ -35,12 +45,49 @@ class AdminAPI {
 
   // Course Management
   async getCourses(params = {}) {
+    console.log('🌐 Making API call to /admin/courses with params:', params)
     const response = await api.get('/admin/courses', { params })
+    console.log('📡 API response received:', response.data)
+    return response.data
+  }
+
+  async getCourse(id) {
+    const response = await api.get(`/admin/courses/${id}`)
+    return response.data
+  }
+
+  // Debug endpoint to check all courses
+  async getDebugCourses() {
+    console.log('🔧 Making debug API call to /admin/debug/courses')
+    const response = await api.get('/admin/debug/courses')
+    console.log('🐛 Debug response:', response.data)
+    return response.data
+  }
+
+  async createCourse(courseData) {
+    console.log('🎯 Creating course with data:', courseData)
+    const response = await api.post('/courses', courseData)
+    console.log('✅ Course created successfully:', response.data)
+    return response.data
+  }
+
+  async publishCourse(id) {
+    const response = await api.post(`/admin/courses/${id}/publish`)
     return response.data
   }
 
   async approveCourse(id) {
     const response = await api.post(`/admin/courses/${id}/approve`)
+    return response.data
+  }
+
+  async updateCourse(id, payload) {
+    const response = await api.put(`/admin/courses/${id}`, payload)
+    return response.data
+  }
+
+  async deleteCourse(id) {
+    const response = await api.delete(`/admin/courses/${id}`)
     return response.data
   }
 

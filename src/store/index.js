@@ -108,10 +108,14 @@ export const useUIStore = create(
 
 // Course Store
 export const useCourseStore = create(
-  immer((set, get) => ({
+  persist(
+    immer((set, get) => ({
     courses: [],
     currentCourse: null,
     enrolledCourses: [],
+    progressByCourseId: {}, // { [courseId]: { completedLessonIds: string[], minutesWatched: number } }
+    studyActivityDays: [], // [ 'YYYY-MM-DD', ... ] when user was active
+    certificates: [], // { id, courseId, courseName, userName, issuedAt }
     filters: {
       category: '',
       level: '',
@@ -130,6 +134,79 @@ export const useCourseStore = create(
     setEnrolledCourses: (courses) => set((state) => {
       state.enrolledCourses = courses
     }),
+
+    addEnrolledCourse: (course) => set((state) => {
+      const exists = state.enrolledCourses.some(c => c.id === course.id)
+      if (!exists) {
+        state.enrolledCourses.push(course)
+      }
+      if (!state.progressByCourseId[course.id]) {
+        state.progressByCourseId[course.id] = { completedLessonIds: [], minutesWatched: 0 }
+      }
+    }),
+
+    isCourseEnrolled: (courseId) => {
+      return get().enrolledCourses.some(c => c.id === courseId)
+    },
+
+
+
+    isLessonCompleted: (courseId, lessonId) => {
+      const map = get().progressByCourseId || {}
+      const entry = map[courseId]
+      return !!entry && entry.completedLessonIds.includes(lessonId)
+    },
+
+    getTotalStudyHours: () => {
+      const map = get().progressByCourseId || {}
+      const totalMinutes = Object.values(map || {}).reduce((sum, e) => sum + (e?.minutesWatched || 0), 0)
+      return Math.floor(totalMinutes / 60)
+    },
+
+    getTotalStudyTimeFormatted: () => {
+      const map = get().progressByCourseId || {}
+      const totalMinutes = Object.values(map || {}).reduce((sum, e) => sum + (e?.minutesWatched || 0), 0)
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      return `${hours}h ${minutes}m`
+    },
+
+    getStudyActivityDays: () => {
+      const days = get().studyActivityDays || []
+      return [...days].sort((a, b) => (a < b ? 1 : -1))
+    },
+
+    getStudyStreakSummary: (limit = 7) => {
+      const days = get().getStudyActivityDays().slice(0, limit)
+      if (days.length === 0) return 'No activity yet'
+      const fmt = (iso) => {
+        const [y, m, d] = iso.split('-').map((n) => parseInt(n, 10))
+        const date = new Date(y, m - 1, d)
+        return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+      }
+      return `Active on: ${days.map(fmt).join(', ')}`
+    },
+
+    isCourseFullyCompleted: (courseId, totalLessons) => {
+      const map = get().progressByCourseId || {}
+      const entry = map[courseId]
+      return !!entry && Array.isArray(entry.completedLessonIds) && entry.completedLessonIds.length >= (totalLessons || 0)
+    },
+
+
+
+    // Check completion and auto-issue certificate if all sections are completed
+    ensureCertificateForCourse: async (courseId, courseName, userName, totalLessons) => {
+      const state = get()
+      const entry = state.progressByCourseId[courseId]
+      const already = state.certificates.find(c => c.courseId === courseId)
+      
+      if (!already && entry && Array.isArray(entry.completedLessonIds) && entry.completedLessonIds.length >= (totalLessons || 0)) {
+        await state.issueCertificate(courseId, courseName, userName)
+      }
+    },
+
+    listCertificates: () => get().certificates,
     
     updateCourse: (courseId, updates) => set((state) => {
       const index = state.courses.findIndex(c => c._id === courseId)
@@ -153,8 +230,172 @@ export const useCourseStore = create(
         search: '',
         tags: []
       }
+    }),
+
+    // Clear all user-specific course data (for when switching users)
+    clearUserData: () => set((state) => {
+      state.enrolledCourses = []
+      state.progressByCourseId = {}
+      state.certificates = []
+    }),
+
+    // Sync user progress and enrolled courses from database
+    syncProgressFromDatabase: async () => {
+      try {
+        console.log('🔄 Starting sync from database...')
+        
+        // Sync progress data
+        const { userProgressAPI, courseAPI } = await import('../services/api.js')
+        
+        // Get user progress
+        console.log('📊 Fetching user progress...')
+        const progressResponse = await userProgressAPI.getAllProgress()
+        console.log('📊 Progress response:', progressResponse.data)
+        
+        // Get enrolled courses
+        console.log('📚 Fetching enrolled courses...')
+        const enrolledResponse = await courseAPI.getEnrolledCourses()
+        console.log('📚 Enrolled courses response:', enrolledResponse.data)
+        
+        set((state) => {
+          // Clear existing data
+          state.progressByCourseId = {}
+          state.certificates = []
+          state.enrolledCourses = []
+          
+          // Populate progress from database
+          if (progressResponse.data?.success) {
+            const progressData = progressResponse.data.data
+            console.log('📊 Syncing progress for', progressData.length, 'courses')
+            progressData.forEach(courseProgress => {
+              state.progressByCourseId[courseProgress.courseId] = {
+                completedLessonIds: courseProgress.completedLessons || [],
+                minutesWatched: courseProgress.totalWatchTime || 0
+              }
+              
+              // Add certificates
+              if (courseProgress.certificates) {
+                courseProgress.certificates.forEach(cert => {
+                  state.certificates.push({
+                    id: cert.certificateId,
+                    courseId: courseProgress.courseId,
+                    courseName: cert.courseName,
+                    userName: get().user?.name || 'Student',
+                    issuedAt: cert.issuedAt
+                  })
+                })
+              }
+            })
+          }
+          
+          // Populate enrolled courses from database
+          if (enrolledResponse.data?.success) {
+            const enrolledCourses = enrolledResponse.data.data || []
+            console.log('📚 Syncing', enrolledCourses.length, 'enrolled courses')
+            state.enrolledCourses = enrolledCourses
+          } else {
+            console.warn('⚠️ Failed to get enrolled courses:', enrolledResponse.data)
+          }
+        })
+        
+        console.log('✅ User progress and enrolled courses synced from database')
+      } catch (error) {
+        console.error('❌ Failed to sync data from database:', error)
+        if (error.response) {
+          console.error('❌ Response status:', error.response.status)
+          console.error('❌ Response data:', error.response.data)
+        }
+      }
+    },
+
+    // Manual sync trigger for testing
+    manualSync: async () => {
+      const { syncProgressFromDatabase } = get()
+      await syncProgressFromDatabase()
+    },
+
+    // Mark lesson complete and sync to database
+    markLessonComplete: async (courseId, lessonId, minutesWatched = 0) => {
+      try {
+        // Update local state immediately
+        set((state) => {
+          if (!state.progressByCourseId[courseId]) {
+            state.progressByCourseId[courseId] = { completedLessonIds: [], minutesWatched: 0 }
+          }
+          
+          const progress = state.progressByCourseId[courseId]
+          if (!progress.completedLessonIds.includes(lessonId)) {
+            progress.completedLessonIds.push(lessonId)
+            progress.minutesWatched += minutesWatched
+            
+            // Track study activity day for streaks
+            if (Number.isFinite(minutesWatched) && minutesWatched > 0) {
+              const today = new Date()
+              const y = today.getFullYear()
+              const m = String(today.getMonth() + 1).padStart(2, '0')
+              const d = String(today.getDate()).padStart(2, '0')
+              const iso = `${y}-${m}-${d}`
+              if (!state.studyActivityDays.includes(iso)) {
+                state.studyActivityDays.push(iso)
+                // keep only last 365 days to avoid unbounded growth
+                state.studyActivityDays = state.studyActivityDays
+                  .sort((a, b) => (a < b ? 1 : -1))
+                  .slice(0, 365)
+              }
+            }
+          }
+        })
+        
+        // Sync to database
+        const { userProgressAPI } = await import('../services/api.js')
+        await userProgressAPI.markLessonComplete(courseId, lessonId, minutesWatched)
+        
+        console.log('✅ Lesson completion synced to database')
+      } catch (error) {
+        console.error('Failed to sync lesson completion:', error)
+        // Could implement retry logic here
+      }
+    },
+
+    // Issue certificate and sync to database
+    issueCertificate: async (courseId, courseName, userName) => {
+      try {
+        const certificateId = `cert_${Date.now()}`
+        
+        // Update local state immediately
+        set((state) => {
+          const already = state.certificates.find(c => c.courseId === courseId)
+          if (!already) {
+            state.certificates.push({
+              id: certificateId,
+              courseId,
+              courseName,
+              userName,
+              issuedAt: new Date().toISOString()
+            })
+          }
+        })
+        
+        // Sync to database
+        const { userProgressAPI } = await import('../services/api.js')
+        await userProgressAPI.addCertificate(courseId, certificateId, courseName)
+        
+        console.log('✅ Certificate synced to database')
+      } catch (error) {
+        console.error('Failed to sync certificate:', error)
+      }
+    }
+  })),
+  {
+    name: 'course-storage',
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({ 
+      enrolledCourses: state.enrolledCourses, 
+      progressByCourseId: state.progressByCourseId,
+      certificates: state.certificates
     })
-  }))
+  }
+  )
 )
 
 // Chat Store

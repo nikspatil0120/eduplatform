@@ -32,6 +32,10 @@ const userSchema = new mongoose.Schema({
       type: String,
       default: null
     },
+    avatarPublicId: {
+      type: String,
+      default: null
+    },
     bio: {
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters']
@@ -287,10 +291,13 @@ userSchema.methods.getPublicProfile = function() {
   return {
     id: this._id,
     name: this.name,
+    email: this.email,
     avatar: this.profile.avatar,
     bio: this.profile.bio,
     skills: this.profile.skills,
     role: this.role,
+    provider: this.authentication.provider,
+    providerId: this.authentication.providerId, // Google ID for comparison
     stats: {
       coursesCompleted: this.stats.coursesCompleted,
       certificatesEarned: this.stats.certificatesEarned
@@ -304,10 +311,14 @@ userSchema.methods.toJSON = function() {
   const user = this.toObject()
   
   delete user.password
-  delete user.authentication.emailVerificationToken
-  delete user.authentication.passwordResetToken
-  delete user.authentication.loginAttempts
-  delete user.authentication.lockUntil
+  
+  // Safely delete authentication properties if they exist
+  if (user.authentication) {
+    delete user.authentication.emailVerificationToken
+    delete user.authentication.passwordResetToken
+    delete user.authentication.loginAttempts
+    delete user.authentication.lockUntil
+  }
   
   return user
 }

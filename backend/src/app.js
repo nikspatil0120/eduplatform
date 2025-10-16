@@ -1,5 +1,11 @@
 // Load environment variables FIRST
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 dotenv.config()
 
 import express from 'express'
@@ -8,8 +14,6 @@ import helmet from 'helmet'
 import morgan from 'morgan'
 import compression from 'compression'
 import rateLimit from 'express-rate-limit'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
 
 // Import configurations and middleware
 import { connectDatabase } from './config/database.js'
@@ -24,21 +28,21 @@ import quizRoutes from './routes/quizzes.js'
 import noteRoutes from './routes/notes.js'
 import paymentRoutes from './routes/payments.js'
 import uploadRoutes from './routes/upload.js'
-import analyticsRoutes from './routes/analytics.js'
 import assignmentRoutes from './routes/assignments.js'
 import submissionRoutes from './routes/submissions.js'
 import discussionRoutes from './routes/discussions.js'
 import replyRoutes from './routes/replies.js'
 import notificationRoutes from './routes/notifications.js'
+import profileRoutes from './routes/profile.js'
 import learningPathRoutes from './routes/learningPaths.js'
 import certificateRoutes from './routes/certificates.js'
 import chatRoutes from './routes/chat.js'
 import systemRoutes from './routes/system.js'
 import queueRoutes from './routes/queues.js'
 import adminRoutes from './routes/admin.js'
+import userProgressRoutes from './routes/userProgress.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+// __filename and __dirname already declared above
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -85,10 +89,13 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
 }
 
 app.use(cors(corsOptions))
+// Ensure preflight responses for all routes
+app.options('*', cors(corsOptions))
 
 // Rate limiting
 const limiter = rateLimit({
@@ -143,18 +150,19 @@ app.use(`${API_PREFIX}/quizzes`, quizRoutes)
 app.use(`${API_PREFIX}/notes`, noteRoutes)
 app.use(`${API_PREFIX}/payments`, paymentRoutes)
 app.use(`${API_PREFIX}/upload`, uploadRoutes)
-app.use(`${API_PREFIX}/analytics`, analyticsRoutes)
 app.use(`${API_PREFIX}/assignments`, assignmentRoutes)
 app.use(`${API_PREFIX}/submissions`, submissionRoutes)
 app.use(`${API_PREFIX}/discussions`, discussionRoutes)
 app.use(`${API_PREFIX}/replies`, replyRoutes)
 app.use(`${API_PREFIX}/notifications`, notificationRoutes)
+app.use(`${API_PREFIX}/profile`, profileRoutes)
 app.use(`${API_PREFIX}/learning-paths`, learningPathRoutes)
 app.use(`${API_PREFIX}/certificates`, certificateRoutes)
 app.use(`${API_PREFIX}/chat`, chatRoutes)
 app.use(`${API_PREFIX}/system`, systemRoutes)
 app.use(`${API_PREFIX}/queues`, queueRoutes)
 app.use(`${API_PREFIX}/admin`, adminRoutes)
+app.use(`${API_PREFIX}/user-progress`, userProgressRoutes)
 
 // API Documentation endpoint
 app.get(`${API_PREFIX}/docs`, (req, res) => {
@@ -169,7 +177,8 @@ app.get(`${API_PREFIX}/docs`, (req, res) => {
         'POST /auth/resend-otp': 'Resend OTP',
         'POST /auth/register': 'Register with email/password',
         'POST /auth/login': 'Login with email/password',
-        'POST /auth/google': 'Google OAuth login',
+        'POST /auth/google': 'Google OAuth login (ID token)',
+        'POST /auth/google-oauth': 'Google OAuth login (user info)',
         'POST /auth/refresh': 'Refresh access token',
         'POST /auth/forgot-password': 'Send password reset email',
         'POST /auth/reset-password': 'Reset password with token',
@@ -257,6 +266,11 @@ app.get(`${API_PREFIX}/docs`, (req, res) => {
         'PUT /notifications/preferences': 'Update notification preferences',
         'GET /notifications/analytics': 'Get notification analytics (admin)'
       },
+      profile: {
+        'POST /profile/upload-avatar': 'Upload profile picture',
+        'DELETE /profile/delete-avatar': 'Delete profile picture',
+        'PUT /profile/update': 'Update profile information'
+      },
       learningPaths: {
         'GET /learning-paths': 'Get all learning paths',
         'GET /learning-paths/:id': 'Get learning path by ID',
@@ -293,6 +307,13 @@ app.get(`${API_PREFIX}/docs`, (req, res) => {
         'GET /chat/analytics/:courseId': 'Get chat analytics (instructor/admin)',
         'GET /chat/search': 'Search messages (admin)',
         'DELETE /chat/cleanup': 'Cleanup old messages (admin)'
+      },
+      userProgress: {
+        'GET /user-progress': 'Get all user progress',
+        'GET /user-progress/:courseId': 'Get user progress for specific course',
+        'POST /user-progress/:courseId/lesson': 'Mark lesson as completed',
+        'POST /user-progress/:courseId/certificate': 'Add certificate to user progress',
+        'DELETE /user-progress/:courseId': 'Reset user progress for a course'
       },
       realtime: {
         'WebSocket /socket.io': 'Real-time communication via Socket.IO',

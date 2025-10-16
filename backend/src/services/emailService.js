@@ -1,22 +1,21 @@
-import sgMail from '@sendgrid/mail'
+import emailjs from '@emailjs/nodejs'
 import nodemailer from 'nodemailer'
 import { logger } from '../utils/logger.js'
 
 class EmailService {
   constructor() {
-    this.provider = process.env.EMAIL_PROVIDER || 'sendgrid'
-    this.fromEmail = process.env.FROM_EMAIL || 'noreply@eduplatform.com'
+    this.provider = process.env.EMAIL_PROVIDER || 'emailjs'
+    this.fromEmail = process.env.EMAIL_FROM || 'noreply@eduplatform.com'
     this.fromName = process.env.FROM_NAME || 'EduPlatform'
     this.initialized = false
   }
 
   initialize() {
-    if (this.provider === 'sendgrid') {
-      if (process.env.SENDGRID_API_KEY) {
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY)
-        logger.info('✅ SendGrid email service initialized')
+    if (this.provider === 'emailjs') {
+      if (process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_PUBLIC_KEY) {
+        logger.info('✅ EmailJS service initialized')
       } else {
-        logger.warn('⚠️ SendGrid API key not provided')
+        logger.warn('⚠️ EmailJS configuration not complete')
       }
     } else if (this.provider === 'smtp') {
       this.transporter = nodemailer.createTransporter({
@@ -41,6 +40,21 @@ class EmailService {
 
   async sendEmail(options) {
     try {
+      // Check if email is disabled for development
+      if (process.env.EMAIL_ENABLED === 'false') {
+        logger.info('📧 Email disabled for development - logging email content:')
+        logger.info(`   To: ${options.to}`)
+        logger.info(`   Subject: ${options.subject}`)
+        
+        // Extract OTP from template data if present
+        if (options.template === 'emailVerification' && options.data?.otp) {
+          logger.info(`   🔑 OTP CODE: ${options.data.otp}`)
+          logger.info(`   ⚡ Use this OTP to complete authentication`)
+        }
+        
+        return { success: true, message: 'Email logged (development mode)' }
+      }
+
       await this.ensureInitialized()
       const { to, subject, template, data, html, text, attachments = [] } = options
 
@@ -63,8 +77,8 @@ class EmailService {
         attachments
       }
 
-      if (this.provider === 'sendgrid') {
-        await this.sendWithSendGrid(emailData)
+      if (this.provider === 'emailjs') {
+        await this.sendWithEmailJS(emailData)
       } else if (this.provider === 'smtp') {
         await this.sendWithSMTP(emailData)
       } else {
@@ -80,16 +94,47 @@ class EmailService {
     }
   }
 
-  async sendWithSendGrid(emailData) {
+  async sendWithEmailJS(emailData) {
     try {
-      await sgMail.send(emailData)
-      logger.info(`✅ Email sent successfully to ${emailData.to}`)
+      // Extract OTP from HTML if present for logging
+      const otpMatch = emailData.html?.match(/font-size: 32px[^>]*>(\d{6})</i)
+      const otp = otpMatch ? otpMatch[1] : null
+
+      const templateParams = {
+        to_email: emailData.to,
+        to_name: 'User',
+        from_name: emailData.from.name || this.fromName,
+        subject: emailData.subject,
+        message: emailData.text || this.stripHtml(emailData.html),
+        otp: otp,
+        html_content: emailData.html
+      }
+
+      logger.info('🔧 EmailJS config:', {
+        serviceId: process.env.EMAILJS_SERVICE_ID,
+        templateId: process.env.EMAILJS_TEMPLATE_ID,
+        publicKey: process.env.EMAILJS_PUBLIC_KEY ? 'Set' : 'Missing'
+      })
+
+      await emailjs.send(
+        process.env.EMAILJS_SERVICE_ID,
+        process.env.EMAILJS_TEMPLATE_ID || 'template_default',
+        templateParams,
+        {
+          publicKey: process.env.EMAILJS_PUBLIC_KEY,
+        }
+      )
+
+      logger.info(`✅ Email sent successfully via EmailJS to ${emailData.to}`)
+      if (otp) {
+        logger.info(`   🔑 OTP CODE: ${otp}`)
+      }
     } catch (error) {
-      logger.error('SendGrid error:', error)
+      logger.error('EmailJS error:', error)
       
-      // In development, log the email instead of failing for sender verification issues
-      if (process.env.NODE_ENV === 'development' && error.code === 403) {
-        logger.warn('📧 SendGrid sender not verified, logging email content instead:')
+      // In development, log the email instead of failing
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('📧 EmailJS failed, logging email content instead:')
         logger.info(`   To: ${emailData.to}`)
         logger.info(`   Subject: ${emailData.subject}`)
         logger.info(`   From: ${emailData.from.email}`)
@@ -107,6 +152,11 @@ class EmailService {
       
       throw error
     }
+  }
+
+  stripHtml(html) {
+    if (!html) return ''
+    return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
   }
 
   async sendWithSMTP(emailData) {

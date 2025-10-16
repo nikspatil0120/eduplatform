@@ -12,7 +12,7 @@ const router = express.Router()
 // Rate limiting for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  max: 50, // limit each IP to 50 requests per windowMs (increased for development)
   message: {
     error: 'Too many authentication attempts, please try again later.',
     retryAfter: 900
@@ -97,10 +97,13 @@ router.post('/admin-login', authLimiter, [
 ], handleValidationErrors, async (req, res) => {
   try {
     const { email, password } = req.body
+    console.log('🔐 Admin login attempt:', { email, passwordLength: password?.length })
 
     // Find user by email (include password for comparison)
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password')
+    console.log('👤 User found:', user ? { id: user._id, email: user.email, role: user.role } : 'No user found')
     if (!user) {
+      console.log('❌ No user found with email:', email)
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -109,6 +112,7 @@ router.post('/admin-login', authLimiter, [
 
     // Check if user is admin
     if (user.role !== 'admin') {
+      console.log('❌ User is not admin:', user.role)
       return res.status(403).json({
         success: false,
         message: 'Admin access required. Please use regular login for non-admin users.'
@@ -117,7 +121,9 @@ router.post('/admin-login', authLimiter, [
 
     // Verify password
     const isPasswordValid = await user.comparePassword(password)
+    console.log('🔑 Password valid:', isPasswordValid)
     if (!isPasswordValid) {
+      console.log('❌ Invalid password for user:', email)
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -373,6 +379,82 @@ router.post('/google', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Google authentication failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    })
+  }
+})
+
+// @route   POST /api/v1/auth/google-oauth
+// @desc    Google OAuth login (using user info from frontend)
+// @access  Public
+router.post('/google-oauth', async (req, res) => {
+  try {
+    const { googleId, email, name, avatar } = req.body
+
+    if (!googleId || !email || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google ID, email, and name are required'
+      })
+    }
+
+    // Find or create user
+    let user = await User.findByEmail(email)
+
+    if (user) {
+      // Update existing user with Google info
+      if (user.authentication.provider !== 'google') {
+        user.authentication.provider = 'google'
+        user.authentication.providerId = googleId
+      }
+      user.authentication.isEmailVerified = true
+      user.authentication.lastLogin = new Date()
+      
+      // Only set Google avatar if user doesn't have a Cloudinary avatar
+      if (avatar && !user.profile.avatar && !user.profile.avatarPublicId) {
+        user.profile.avatar = avatar
+      }
+      
+      await user.save()
+    } else {
+      // Create new user
+      user = new User({
+        name,
+        email,
+        role: 'student',
+        profile: {
+          avatar: avatar || null // Set Google avatar for new users
+        },
+        authentication: {
+          provider: 'google',
+          providerId: googleId,
+          isEmailVerified: true,
+          lastLogin: new Date()
+        }
+      })
+      
+      await user.save()
+    }
+
+    // Generate tokens
+    const authToken = user.generateAuthToken()
+    const refreshToken = user.generateRefreshToken()
+
+    res.json({
+      success: true,
+      message: 'Google OAuth login successful',
+      data: {
+        user: user.getPublicProfile(),
+        token: authToken,
+        refreshToken
+      }
+    })
+
+  } catch (error) {
+    logger.error('Google OAuth error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Google OAuth authentication failed',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     })
   }
@@ -639,47 +721,19 @@ router.post('/send-otp', authLimiter, [
       })
     }
 
-    // Send OTP email
-    try {
-      await emailService.sendEmail({
-        to: email,
-        subject: `Your EduPlatform OTP: ${otp}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">EduPlatform - One-Time Password</h2>
-            <p>Hello,</p>
-            <p>Your OTP for ${purpose} is:</p>
-            <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-              <h1 style="color: #1f2937; font-size: 32px; letter-spacing: 8px; margin: 0;">${otp}</h1>
-            </div>
-            <p>This OTP will expire in 10 minutes.</p>
-            <p>If you didn't request this OTP, please ignore this email.</p>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-            <p style="color: #6b7280; font-size: 14px;">
-              Best regards,<br>
-              The EduPlatform Team
-            </p>
-          </div>
-        `
-      })
-
-      res.json({
-        success: true,
-        message: 'OTP sent successfully to your email',
-        data: {
-          email,
-          purpose,
-          expiryTime: result.expiryTime
-        }
-      })
-
-    } catch (emailError) {
-      logger.error('Failed to send OTP email:', emailError)
-      res.status(500).json({
-        success: false,
-        message: 'Failed to send OTP email'
-      })
-    }
+    // Return OTP data for frontend to handle email sending
+    logger.info(`📧 OTP generated for ${email}: ${otp}`)
+    
+    res.json({
+      success: true,
+      message: 'OTP generated successfully',
+      data: {
+        email,
+        purpose,
+        otp: otp, // Frontend will use this to send email via EmailJS
+        expiryTime: result.expiryTime
+      }
+    })
 
   } catch (error) {
     logger.error('Send OTP error:', error)
@@ -831,42 +885,19 @@ router.post('/resend-otp', authLimiter, [
       })
     }
 
-    // Send new OTP email
-    try {
-      await emailService.sendEmail({
-        to: email,
-        subject: `Your EduPlatform OTP: ${result.otp}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">EduPlatform - One-Time Password</h2>
-            <p>Hello,</p>
-            <p>Your new OTP for ${purpose} is:</p>
-            <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-              <h1 style="color: #1f2937; font-size: 32px; letter-spacing: 8px; margin: 0;">${result.otp}</h1>
-            </div>
-            <p>This OTP will expire in 10 minutes.</p>
-            <p>If you didn't request this OTP, please ignore this email.</p>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-            <p style="color: #6b7280; font-size: 14px;">
-              Best regards,<br>
-              The EduPlatform Team
-            </p>
-          </div>
-        `
-      })
-
-      res.json({
-        success: true,
-        message: 'New OTP sent successfully'
-      })
-
-    } catch (emailError) {
-      logger.error('Failed to send resend OTP email:', emailError)
-      res.status(500).json({
-        success: false,
-        message: 'Failed to send new OTP'
-      })
-    }
+    // Return new OTP data for frontend to handle email sending
+    logger.info(`📧 New OTP generated for ${email}: ${result.otp}`)
+    
+    res.json({
+      success: true,
+      message: 'New OTP generated successfully',
+      data: {
+        email,
+        purpose,
+        otp: result.otp, // Frontend will use this to send email via EmailJS
+        expiryTime: result.expiryTime
+      }
+    })
 
   } catch (error) {
     logger.error('Resend OTP error:', error)

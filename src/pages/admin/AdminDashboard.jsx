@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Users, 
   BookOpen, 
-  FileText, 
   BarChart3, 
   Bell, 
   Settings,
@@ -13,12 +12,12 @@ import {
   LogOut,
   Menu,
   X,
-  TrendingUp,
   UserCheck,
   GraduationCap,
   Activity
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCourseStore } from '../../store'
 import toast from 'react-hot-toast'
 import adminApi from '../../services/adminApi'
 
@@ -26,7 +25,6 @@ import adminApi from '../../services/adminApi'
 import UserManagement from './modules/UserManagement'
 import CourseManagement from './modules/CourseManagement'
 import AssignmentManagement from './modules/AssignmentManagement'
-import AnalyticsDashboard from './modules/AnalyticsDashboard'
 import NotificationManagement from './modules/NotificationManagement'
 import SystemSettings from './modules/SystemSettings'
 
@@ -42,6 +40,12 @@ const AdminDashboard = () => {
     totalCourses: 0,
     pendingAssignments: 0
   })
+  // Note: we previously showed client-side enrolled count; now we rely on backend stats
+  const [showEnrolledModal, setShowEnrolledModal] = useState(false)
+  const [enrolledUsers, setEnrolledUsers] = useState([])
+  const [loadingEnrolled, setLoadingEnrolled] = useState(false)
+  const [selectedUserCourses, setSelectedUserCourses] = useState(null)
+  const [loadingUserCourses, setLoadingUserCourses] = useState(false)
 
   // Debug logging
   console.log('AdminDashboard rendering...', { user, activeModule })
@@ -59,8 +63,12 @@ const AdminDashboard = () => {
       
       const stats = await adminApi.getDashboardStats()
       console.log('Dashboard stats received:', stats)
-      setDashboardStats(stats)
-      toast.success('Dashboard data loaded successfully')
+      setDashboardStats({
+        totalUsers: Number(stats?.totalUsers) || 0,
+        activeUsers: Number(stats?.activeUsers) || 0,
+        totalCourses: Number(stats?.totalCourses) || 0,
+        pendingAssignments: Number(stats?.pendingAssignments) || 0
+      })
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
       console.error('Error details:', error.response?.data || error.message)
@@ -69,26 +77,31 @@ const AdminDashboard = () => {
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error('Authentication failed. Please login again.')
       } else {
-        toast.error('Failed to load dashboard statistics. Using sample data.')
+        toast.error('Failed to load dashboard statistics.')
       }
       
-      // Use mock data as fallback
-      setDashboardStats({
-        totalUsers: 1247,
-        activeUsers: 89,
-        totalCourses: 45,
-        pendingAssignments: 23
-      })
+      // Fallback to zeros on error
+      setDashboardStats({ totalUsers: 0, activeUsers: 0, totalCourses: 0, pendingAssignments: 0 })
+    }
+  }
+
+  const openEnrolledUsersModal = async () => {
+    try {
+      setLoadingEnrolled(true)
+      setShowEnrolledModal(true)
+      const data = await adminApi.getEnrolledUsers()
+      setEnrolledUsers(Array.isArray(data.users) ? data.users : [])
+    } catch (e) {
+      toast.error('Failed to load enrolled users')
+    } finally {
+      setLoadingEnrolled(false)
     }
   }
 
   // Navigation items
   const navigationItems = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3, color: 'text-blue-500' },
-    { id: 'users', name: 'User Management', icon: Users, color: 'text-green-500' },
     { id: 'courses', name: 'Course Management', icon: BookOpen, color: 'text-purple-500' },
-    { id: 'assignments', name: 'Assignments', icon: FileText, color: 'text-orange-500' },
-    { id: 'analytics', name: 'Analytics', icon: TrendingUp, color: 'text-indigo-500' },
     { id: 'notifications', name: 'Notifications', icon: Bell, color: 'text-red-500' },
     { id: 'settings', name: 'System Settings', icon: Settings, color: 'text-gray-500' }
   ]
@@ -110,37 +123,19 @@ const AdminDashboard = () => {
   const renderDashboardOverview = () => (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardStats.totalUsers.toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-        </motion.div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 cursor-pointer"
+          onClick={openEnrolledUsersModal}
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardStats.activeUsers.toLocaleString()}
-              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{(dashboardStats.activeUsers || 0).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
               <UserCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -157,9 +152,7 @@ const AdminDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Courses</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardStats.totalCourses.toLocaleString()}
-              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{(dashboardStats.totalCourses || 0).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
               <BookOpen className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -167,73 +160,9 @@ const AdminDashboard = () => {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Assignments</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardStats.pendingAssignments.toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-              <FileText className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-            </div>
-          </div>
-        </motion.div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Add User Action */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveModule('users')}
-            className="p-4 border border-green-200 dark:border-green-600 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors group"
-          >
-            <Users className="h-6 w-6 text-green-600 dark:text-green-400 mb-2 mx-auto group-hover:scale-110 transition-transform" />
-            <p className="text-sm font-medium text-gray-900 dark:text-white text-center">
-              Add User
-            </p>
-          </motion.button>
-
-          {/* Add Course Action */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveModule('courses')}
-            className="p-4 border border-blue-200 dark:border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group"
-          >
-            <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400 mb-2 mx-auto group-hover:scale-110 transition-transform" />
-            <p className="text-sm font-medium text-gray-900 dark:text-white text-center">
-              Add Course
-            </p>
-          </motion.button>
-
-          {/* Other Navigation Items */}
-          {navigationItems.slice(1).map((item) => (
-            <motion.button
-              key={item.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveModule(item.id)}
-              className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group"
-            >
-              <item.icon className={`h-6 w-6 ${item.color} mb-2 mx-auto group-hover:scale-110 transition-transform`} />
-              <p className="text-sm font-medium text-gray-900 dark:text-white text-center">
-                {item.name}
-              </p>
-            </motion.button>
-          ))}
-        </div>
-      </div>
+      {/* Quick Actions removed as requested */}
     </div>
   )
 
@@ -243,14 +172,8 @@ const AdminDashboard = () => {
     switch (activeModule) {
       case 'dashboard':
         return renderDashboardOverview()
-      case 'users':
-        return <UserManagement />
       case 'courses':
         return <CourseManagement />
-      case 'assignments':
-        return <AssignmentManagement />
-      case 'analytics':
-        return <AnalyticsDashboard />
       case 'notifications':
         return <NotificationManagement />
       case 'settings':
@@ -452,6 +375,72 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Enrolled Users Modal */}
+      {showEnrolledModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowEnrolledModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Enrolled Users ({enrolledUsers.length})</h4>
+              <button className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" onClick={() => setShowEnrolledModal(false)}>✕</button>
+            </div>
+            {loadingEnrolled ? (
+              <div className="py-8 text-center text-gray-600 dark:text-gray-300">Loading...</div>
+            ) : enrolledUsers.length === 0 ? (
+              <div className="py-8 text-center text-gray-600 dark:text-gray-300">No enrolled users found.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="max-h-96 overflow-auto divide-y divide-gray-200 dark:divide-gray-700">
+                  {enrolledUsers.map(u => (
+                    <button
+                      key={u._id}
+                      onClick={async () => {
+                        try {
+                          setLoadingUserCourses(true)
+                          setSelectedUserCourses(null)
+                          const data = await adminApi.getUserEnrollments(u._id)
+                          setSelectedUserCourses({ user: u, courses: data.courses || [] })
+                        } catch (_) {
+                          toast.error('Failed to fetch user enrollments')
+                        } finally {
+                          setLoadingUserCourses(false)
+                        }
+                      }}
+                      className="w-full text-left py-3 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <div className="font-medium text-gray-900 dark:text-white">{u.name || 'Unnamed User'}</div>
+                      <div className="text-xs text-gray-500">{u.email}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="border rounded-lg p-3 border-gray-200 dark:border-gray-700 min-h-[8rem]">
+                  {loadingUserCourses ? (
+                    <div className="text-center text-gray-600 dark:text-gray-300">Loading courses…</div>
+                  ) : selectedUserCourses ? (
+                    <div>
+                      <div className="font-semibold text-gray-900 dark:text-white mb-2">{selectedUserCourses.user.name || selectedUserCourses.user.email}</div>
+                      {selectedUserCourses.courses.length === 0 ? (
+                        <div className="text-sm text-gray-600 dark:text-gray-300">No courses found.</div>
+                      ) : (
+                        <ul className="space-y-2 text-sm">
+                          {selectedUserCourses.courses.map(c => (
+                            <li key={c._id} className="flex items-center justify-between">
+                              <span className="text-gray-900 dark:text-white">{c.title}</span>
+                              <span className="text-xs text-gray-500">{c.level}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600 dark:text-gray-300">Select a user to view enrolled courses.</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -40,6 +40,7 @@ const VideoPlayer = ({
   const [showSubtitles, setShowSubtitles] = useState(false)
   const [selectedSubtitle, setSelectedSubtitle] = useState(null)
   const [isBuffering, setIsBuffering] = useState(false)
+  const [showCompleted, setShowCompleted] = useState(false)
 
   useEffect(() => {
     const video = videoRef.current
@@ -58,6 +59,7 @@ const VideoPlayer = ({
 
     const handleEnded = () => {
       setIsPlaying(false)
+      setShowCompleted(true)
       if (onComplete) {
         onComplete()
       }
@@ -109,6 +111,11 @@ const VideoPlayer = ({
     const newTime = percent * duration
     videoRef.current.currentTime = newTime
     setCurrentTime(newTime)
+    // If user drags to near the end, mark completed
+    if (duration && newTime >= duration - 1) {
+      setShowCompleted(true)
+      if (onComplete) onComplete()
+    }
   }
 
   const handleVolumeChange = (newVolume) => {
@@ -185,6 +192,20 @@ const VideoPlayer = ({
             className="absolute inset-0 flex items-center justify-center bg-black/50"
           >
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Lesson Completed Banner */}
+      <AnimatePresence>
+        {showCompleted && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"
+          >
+            Lesson completed
           </motion.div>
         )}
       </AnimatePresence>

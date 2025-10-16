@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { 
@@ -15,45 +15,34 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useCourseStore } from '../store'
 
 const Dashboard = () => {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
+  const enrolled = useCourseStore((s) => s.enrolledCourses)
+  const getTotalStudyTimeFormatted = useCourseStore((s) => s.getTotalStudyTimeFormatted)
+  const getStudyStreakSummary = useCourseStore((s) => s.getStudyStreakSummary)
+  const certificates = useCourseStore((s) => s.listCertificates())
+  const manualSync = useCourseStore((s) => s.manualSync)
+  const [showCertModal, setShowCertModal] = useState(false)
 
-  const enrolledCourses = [
-    {
-      id: 1,
-      title: 'React Development Masterclass',
-      instructor: 'Sarah Johnson',
-      progress: 75,
-      totalLessons: 24,
-      completedLessons: 18,
-      thumbnail: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=300',
-      nextLesson: 'Advanced Hooks',
-      timeLeft: '2h 30m'
-    },
-    {
-      id: 2,
-      title: 'UI/UX Design Fundamentals',
-      instructor: 'Michael Chen',
-      progress: 45,
-      totalLessons: 16,
-      completedLessons: 7,
-      thumbnail: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=300',
-      nextLesson: 'Color Theory',
-      timeLeft: '1h 45m'
-    },
-    {
-      id: 3,
-      title: 'Data Science with Python',
-      instructor: 'Emily Rodriguez',
-      progress: 30,
-      totalLessons: 32,
-      completedLessons: 10,
-      thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300',
-      nextLesson: 'Pandas Basics',
-      timeLeft: '3h 15m'
-    }
-  ]
+  const handleManualSync = async () => {
+    console.log('🔄 Manual sync triggered')
+    await manualSync()
+  }
+
+  // Debug enrolled courses data
+  console.log('📚 Enrolled courses in Dashboard:', enrolled)
+  
+  // Debug enrollment status
+  console.log('🔐 Current user:', user)
+  console.log('🔐 Is authenticated:', isAuthenticated)
+  
+  // Debug course store
+  const { isCourseEnrolled } = useCourseStore.getState()
+  console.log('🔐 Course store enrollment check function:', isCourseEnrolled)
+
+  const enrolledCourses = enrolled || []
 
   const recentNotes = [
     {
@@ -107,34 +96,10 @@ const Dashboard = () => {
   ]
 
   const stats = [
-    {
-      label: 'Courses Enrolled',
-      value: '12',
-      icon: BookOpen,
-      color: 'bg-blue-500',
-      change: '+2 this month'
-    },
-    {
-      label: 'Hours Learned',
-      value: '156',
-      icon: Clock,
-      color: 'bg-green-500',
-      change: '+24 this week'
-    },
-    {
-      label: 'Certificates',
-      value: '8',
-      icon: Award,
-      color: 'bg-yellow-500',
-      change: '+1 this month'
-    },
-    {
-      label: 'Study Streak',
-      value: '15',
-      icon: TrendingUp,
-      color: 'bg-purple-500',
-      change: 'days in a row'
-    }
+    { label: 'Courses Enrolled', value: String(enrolled.length || 0), icon: BookOpen, color: 'bg-blue-500', change: '0 this month' },
+    { label: 'Hours Learned', value: getTotalStudyTimeFormatted(), icon: Clock, color: 'bg-green-500', change: 'watch time' },
+    { label: 'Certificates', value: String(certificates.length || 0), icon: Award, color: 'bg-yellow-500', change: `${certificates.length} total` },
+    { label: 'Study Streak', value: String(useCourseStore.getState().getStudyActivityDays().length || 0), icon: TrendingUp, color: 'bg-purple-500', change: getStudyStreakSummary(7) }
   ]
 
   return (
@@ -157,20 +122,12 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 transition-colors"
+              <button
+                onClick={handleManualSync}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <Bell className="h-6 w-6" />
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
-              </motion.button>
-              <Link
-                to="/courses"
-                className="btn-primary flex items-center space-x-2"
-              >
-                <span>Browse Courses</span>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
+                🔄 Sync Data
+              </button>
             </div>
           </div>
         </motion.div>
@@ -186,7 +143,12 @@ const Dashboard = () => {
             <motion.div
               key={stat.label}
               whileHover={{ y: -5 }}
-              className="card p-6"
+              className={`card p-6 ${stat.label === 'Certificates' ? 'cursor-pointer' : ''}`}
+              onClick={() => {
+                if (stat.label === 'Certificates' && certificates.length > 0) {
+                  setShowCertModal(true)
+                }
+              }}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -230,7 +192,7 @@ const Dashboard = () => {
               </div>
 
               <div className="space-y-4">
-                {enrolledCourses.map((course, index) => (
+                {enrolled.length > 0 && enrolled.map((course, index) => (
                   <motion.div
                     key={course.id}
                     initial={{ opacity: 0, x: -20 }}
@@ -240,40 +202,24 @@ const Dashboard = () => {
                     className="flex items-center space-x-4 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                   >
                     <img
-                      src={course.thumbnail}
-                      alt={course.title}
+                      src={course.thumbnail || '/api/placeholder/course-thumbnail.jpg'}
+                      alt={course.title || 'Course'}
                       className="w-16 h-16 rounded-lg object-cover"
                     />
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 dark:text-white mb-1">
-                        {course.title}
+                        {course.title || 'Untitled Course'}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        by {course.instructor}
+                        by {course.instructor?.name || course.instructor || 'Unknown Instructor'}
                       </p>
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-                            <span>{course.completedLessons}/{course.totalLessons} lessons</span>
-                            <span>{course.progress}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${course.progress}%` }}
-                              transition={{ duration: 1, delay: 0.5 }}
-                              className="bg-primary-600 h-2 rounded-full"
-                            ></motion.div>
-                          </div>
-                        </div>
-                        <Link
-                          to={`/course/${course.id}`}
-                          className="flex items-center space-x-1 text-primary-600 hover:text-primary-700 text-sm font-medium"
-                        >
-                          <Play className="h-4 w-4" />
-                          <span>Continue</span>
-                        </Link>
-                      </div>
+                      <Link
+                        to={`/course/${course.id}`}
+                        className="flex items-center space-x-1 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      >
+                        <Play className="h-4 w-4" />
+                        <span>Open</span>
+                      </Link>
                     </div>
                   </motion.div>
                 ))}
@@ -283,6 +229,34 @@ const Dashboard = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Certificates */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="card p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Certificates</h3>
+              </div>
+              {certificates.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400">No certificates yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {certificates.map(cert => (
+                    <Link key={cert.id} to={`/certificate/${cert.id}`} className="block p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{cert.courseName}</div>
+                          <div className="text-xs text-gray-500">Issued {new Date(cert.issuedAt).toLocaleString()}</div>
+                        </div>
+                        <span className="text-primary-600 text-sm">View</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </motion.div>
             {/* Recent Notes */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -381,6 +355,48 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Certificates Modal */}
+      {showCertModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowCertModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Your Certificates</h4>
+              <button className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" onClick={() => setShowCertModal(false)}>✕</button>
+            </div>
+            {certificates.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400">No certificates yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {certificates.map(cert => (
+                  <div key={cert.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">{cert.courseName}</div>
+                      <div className="text-xs text-gray-500">Issued {new Date(cert.issuedAt).toLocaleString()}</div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Link to={`/certificate/${cert.id}`} className="btn-secondary px-3 py-1 text-sm">View</Link>
+                      <button
+                        className="btn-primary px-3 py-1 text-sm"
+                        onClick={() => {
+                          const win = window.open(`/certificate/${cert.id}`, '_blank')
+                          if (win) {
+                            win.focus()
+                            // Give the new tab a moment to load then trigger print
+                            setTimeout(() => { try { win.print() } catch (_) {} }, 800)
+                          }
+                        }}
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

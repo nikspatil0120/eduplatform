@@ -20,6 +20,13 @@ const createAdminUsers = async () => {
         bio: 'Platform super administrator with full access to all features.'
       },
       {
+        name: 'Super Admin (Edu)',
+        email: 'superadmin@edu.edu',
+        password: 'admin123',
+        role: 'admin',
+        bio: 'Platform super administrator with full access to all features.'
+      },
+      {
         name: 'Moderator',
         email: 'moderator@kiro.edu', 
         password: 'mod123',
@@ -74,6 +81,10 @@ const createAdminUsers = async () => {
     console.log('┌─────────────────────────────────────────┐')
     console.log('│ SUPER ADMIN                             │')
     console.log('│ Email: superadmin@kiro.edu              │')
+    console.log('│ Password: admin123                      │')
+    console.log('├─────────────────────────────────────────┤')
+    console.log('│ SUPER ADMIN (EDU)                       │')
+    console.log('│ Email: superadmin@edu.edu               │')
     console.log('│ Password: admin123                      │')
     console.log('├─────────────────────────────────────────┤')
     console.log('│ MODERATOR                               │')

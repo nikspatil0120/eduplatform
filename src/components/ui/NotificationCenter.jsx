@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
+import { notificationAPI } from '../../services/api'
+import toast from 'react-hot-toast'
 
 const NotificationCenter = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -11,25 +13,32 @@ const NotificationCenter = () => {
     const fetchNotifications = async () => {
       try {
         setLoading(true)
-        // For now, use mock data since backend might not be running
+        const response = await notificationAPI.getNotifications({ limit: 20 })
+        
+        if (response.data?.success) {
+          const formattedNotifications = response.data.data.map(notification => ({
+            id: notification._id,
+            title: notification.title,
+            message: notification.message,
+            time: formatTimeAgo(notification.createdAt),
+            read: !!notification.readAt,
+            type: notification.type,
+            actionUrl: notification.context?.relatedUrl
+          }))
+          setNotifications(formattedNotifications)
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error)
+        // Fallback to mock data if API fails
         setNotifications([
           {
-            id: 1,
+            id: 'mock-1',
             title: 'Welcome to EduPlatform!',
             message: 'Start exploring courses and begin your learning journey.',
             time: '2 hours ago',
             read: false
-          },
-          {
-            id: 2,
-            title: 'New Course Available',
-            message: 'Check out the latest JavaScript course.',
-            time: '1 day ago',
-            read: true
           }
         ])
-      } catch (error) {
-        console.error('Failed to fetch notifications:', error)
       } finally {
         setLoading(false)
       }
@@ -37,6 +46,32 @@ const NotificationCenter = () => {
 
     fetchNotifications()
   }, [])
+
+  // Helper function to format time ago
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInSeconds = Math.floor((now - date) / 1000)
+    
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    return `${Math.floor(diffInSeconds / 86400)} days ago`
+  }
+
+  // Mark notification as read
+  const markAsRead = async (notificationId) => {
+    try {
+      await notificationAPI.markAsRead(notificationId)
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      )
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+    }
+  }
 
 
 
@@ -77,12 +112,13 @@ const NotificationCenter = () => {
                     !notification.read ? 'bg-blue-50' : ''
                   }`}
                   onClick={() => {
-                    // Mark as read when clicked
-                    setNotifications(prev => 
-                      prev.map(n => 
-                        n.id === notification.id ? { ...n, read: true } : n
-                      )
-                    )
+                    if (!notification.read) {
+                      markAsRead(notification.id)
+                    }
+                    // Navigate to action URL if available
+                    if (notification.actionUrl) {
+                      window.location.href = notification.actionUrl
+                    }
                   }}
                 >
                   <div className="flex items-start space-x-3">

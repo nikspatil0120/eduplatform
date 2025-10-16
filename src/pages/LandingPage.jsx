@@ -124,15 +124,7 @@ const LandingPage = () => {
                 <ArrowRight className="h-5 w-5" />
               </Link>
               
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                className="flex items-center space-x-2 text-white hover:text-accent-400 transition-colors"
-              >
-                <div className="bg-white/20 p-3 rounded-full">
-                  <Play className="h-6 w-6" />
-                </div>
-                <span className="text-lg">Watch Demo</span>
-              </motion.button>
+              {/* Removed Watch Demo button per request */}
             </motion.div>
           </motion.div>
         </div>

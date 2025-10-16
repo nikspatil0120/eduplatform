@@ -1,6 +1,7 @@
 import express from 'express'
 import { body, validationResult, param, query } from 'express-validator'
 import rateLimit from 'express-rate-limit'
+import mongoose from 'mongoose'
 import Notification from '../models/Notification.js'
 import { authenticate as auth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
@@ -37,35 +38,70 @@ router.get('/', notificationLimiter, [
   query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be between 1 and 50')
 ], handleValidationErrors, auth, async (req, res) => {
   try {
-    const { type, status, page = 1, limit = 20 } = req.query
+    const { type, status, unreadOnly, page = 1, limit = 20 } = req.query
     const skip = (page - 1) * limit
 
     const options = {
       type,
-      status,
+      unreadOnly: unreadOnly === 'true',
       limit: parseInt(limit),
       skip
     }
 
-    const notifications = await Notification.findByUser(req.user.id, options)
+    // Build query - ensure proper ObjectId conversion
+    const query = { recipientId: new mongoose.Types.ObjectId(req.user.id) }
+    if (type) query.type = type
+    if (unreadOnly === 'true') query.readAt = null
+    
+    console.log('🔍 Notifications query:', query)
+    console.log('👤 Current user ID:', req.user.id)
+    console.log('👤 Current user ID type:', typeof req.user.id)
+    console.log('👤 Current user object:', {
+      id: req.user.id,
+      email: req.user.email,
+      role: req.user.role,
+      name: req.user.name
+    })
+    
+    const notifications = await Notification.find(query)
+      .populate('senderId', 'name profile.avatar')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(skip)
+    
+    console.log('📨 Found notifications:', notifications.length)
+    
+    // Debug: Check all notifications in database
+    const allNotifications = await Notification.find({}).limit(5)
+    console.log('🗃️ Sample notifications in DB:', allNotifications.map(n => ({
+      id: n._id,
+      recipientId: n.recipientId,
+      title: n.title,
+      status: n.status,
+      createdAt: n.createdAt
+    })))
+    
+    // Also check if any notifications exist for this specific user
+    const userNotifications = await Notification.find({ recipientId: new mongoose.Types.ObjectId(req.user.id) })
+    console.log('👤 User specific notifications:', userNotifications.length)
     
     // Get total count for pagination
-    const query = { userId: req.user.id }
-    if (type) query.type = type
-    if (status) query.status = status
+    const countQuery = { recipientId: new mongoose.Types.ObjectId(req.user.id) }
+    if (type) countQuery.type = type
+    if (status) countQuery.status = status
     
-    const total = await Notification.countDocuments(query)
+    const total = await Notification.countDocuments(countQuery)
 
     // Get unread count
     const unreadCount = await Notification.countDocuments({
-      userId: req.user.id,
-      status: 'unread'
+      recipientId: new mongoose.Types.ObjectId(req.user.id),
+      readAt: null
     })
 
     res.json({
       success: true,
-      data: {
-        notifications,
+      data: notifications,
+      meta: {
         unreadCount,
         pagination: {
           current: parseInt(page),
@@ -89,8 +125,8 @@ router.get('/', notificationLimiter, [
 router.get('/unread-count', notificationLimiter, auth, async (req, res) => {
   try {
     const count = await Notification.countDocuments({
-      userId: req.user.id,
-      status: 'unread'
+      recipientId: new mongoose.Types.ObjectId(req.user.id),
+      readAt: null
     })
 
     res.json({
@@ -136,13 +172,16 @@ router.post('/', notificationLimiter, [
     } = req.body
 
     const notification = new Notification({
-      userId,
+      recipientId: userId,
+      senderId: req.user.id,
       type,
       title,
       message,
       priority,
-      actionUrl,
-      metadata: metadata ? JSON.parse(metadata) : undefined
+      context: {
+        relatedUrl: actionUrl,
+        metadata: metadata ? JSON.parse(metadata) : undefined
+      }
     })
 
     await notification.save()
@@ -191,13 +230,16 @@ router.post('/broadcast', notificationLimiter, [
     } = req.body
 
     const notifications = userIds.map(userId => ({
-      userId,
+      recipientId: userId,
+      senderId: req.user.id,
       type,
       title,
       message,
       priority,
-      actionUrl,
-      metadata: metadata ? JSON.parse(metadata) : undefined
+      context: {
+        relatedUrl: actionUrl,
+        metadata: metadata ? JSON.parse(metadata) : undefined
+      }
     }))
 
     await Notification.insertMany(notifications)
@@ -233,7 +275,7 @@ router.put('/:id/read', [
     }
 
     // Check if notification belongs to user
-    if (notification.userId.toString() !== req.user.id) {
+    if (notification.recipientId.toString() !== req.user.id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this notification'
@@ -262,9 +304,8 @@ router.put('/:id/read', [
 router.put('/mark-all-read', notificationLimiter, auth, async (req, res) => {
   try {
     const result = await Notification.updateMany(
-      { userId: req.user.id, status: 'unread' },
+      { recipientId: new mongoose.Types.ObjectId(req.user.id), readAt: null },
       { 
-        status: 'read',
         readAt: new Date()
       }
     )
@@ -300,14 +341,14 @@ router.put('/:id/archive', [
     }
 
     // Check if notification belongs to user
-    if (notification.userId.toString() !== req.user.id) {
+    if (notification.recipientId.toString() !== req.user.id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this notification'
       })
     }
 
-    await notification.archive()
+    await notification.dismiss()
 
     res.json({
       success: true,
@@ -340,7 +381,7 @@ router.delete('/:id', [
     }
 
     // Check if notification belongs to user or user is admin
-    const isOwner = notification.userId.toString() === req.user.id
+    const isOwner = notification.recipientId.toString() === req.user.id.toString()
     const isAdmin = req.user.role === 'admin'
     if (!isOwner && !isAdmin) {
       return res.status(403).json({
@@ -369,7 +410,20 @@ router.delete('/:id', [
 // @access  Private
 router.get('/preferences', notificationLimiter, auth, async (req, res) => {
   try {
-    const preferences = await Notification.getUserPreferences(req.user.id)
+    // For now, return default preferences - this would typically come from User model
+    const preferences = {
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+      types: {
+        course_enrollment: true,
+        course_completion: true,
+        assignment_created: true,
+        assignment_graded: true,
+        announcement: true,
+        system_maintenance: true
+      }
+    }
 
     res.json({
       success: true,
@@ -394,7 +448,13 @@ router.put('/preferences', notificationLimiter, [
   body('types').optional().isObject().withMessage('Types must be an object')
 ], handleValidationErrors, auth, async (req, res) => {
   try {
-    const preferences = await Notification.updateUserPreferences(req.user.id, req.body)
+    // For now, just return the updated preferences - this would typically update User model
+    const preferences = {
+      emailNotifications: req.body.emailNotifications ?? true,
+      pushNotifications: req.body.pushNotifications ?? true,
+      smsNotifications: req.body.smsNotifications ?? false,
+      types: req.body.types || {}
+    }
 
     res.json({
       success: true,
@@ -429,8 +489,10 @@ router.get('/analytics', notificationLimiter, [
 
     const { startDate, endDate, type } = req.query
     const analytics = await Notification.getAnalytics({
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
+      dateRange: startDate && endDate ? {
+        start: startDate,
+        end: endDate
+      } : undefined,
       type
     })
 
@@ -446,5 +508,7 @@ router.get('/analytics', notificationLimiter, [
     })
   }
 })
+
+
 
 export default router

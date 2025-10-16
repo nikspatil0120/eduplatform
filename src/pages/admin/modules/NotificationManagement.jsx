@@ -29,24 +29,63 @@ const NotificationManagement = () => {
     scheduledFor: '',
     type: 'info'
   });
+  const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [showUserSelector, setShowUserSelector] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
 
   useEffect(() => {
     fetchNotifications();
+    fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
+      
+      console.log('🔍 Fetching users from:', `${baseURL}/admin/users`);
+      
+      const response = await fetch(`${baseURL}/admin/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('👥 Users response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('👥 Users data received:', data);
+        // Handle both data structures - new backend returns {users: []} and old returns {data: []}
+        setUsers(data.users || data.data || []);
+      } else {
+        console.error('Failed to fetch users - Status:', response.status);
+        const errorData = await response.text();
+        console.error('Error response:', errorData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch('/api/admin/notifications', {
+      const token = localStorage.getItem('authToken');
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
+      
+      const response = await fetch(`${baseURL}/admin/notifications`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
       if (response.ok) {
         const data = await response.json();
-        setNotifications(data);
+        setNotifications(data.data || []);
       }
     } catch (error) {
+      console.error('Failed to fetch notifications:', error);
       toast.error('Failed to fetch notifications');
     } finally {
       setLoading(false);
@@ -55,18 +94,34 @@ const NotificationManagement = () => {
 
   const handleCreateNotification = async () => {
     try {
+      // Validation
+      if (newNotification.recipients === 'specific' && selectedUsers.length === 0) {
+        toast.error('Please select at least one user');
+        return;
+      }
+      
       setLoading(true);
-      const response = await fetch('/api/admin/notifications', {
+      const token = localStorage.getItem('authToken');
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
+      
+      // Prepare notification data
+      const notificationData = { ...newNotification };
+      if (newNotification.recipients === 'specific' && selectedUsers.length > 0) {
+        notificationData.recipients = selectedUsers.map(user => user.id);
+      }
+      
+      const response = await fetch(`${baseURL}/admin/notifications`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newNotification)
+        body: JSON.stringify(notificationData)
       });
       
       if (response.ok) {
-        const notification = await response.json();
+        const result = await response.json();
+        const notification = result.data;
         setNotifications([notification, ...notifications]);
         setShowCreateModal(false);
         setNewNotification({
@@ -76,6 +131,9 @@ const NotificationManagement = () => {
           scheduledFor: '',
           type: 'info'
         });
+        setSelectedUsers([]);
+        setShowUserSelector(false);
+        setUserSearchTerm('');
         toast.success('Notification created successfully!');
       }
     } catch (error) {
@@ -87,10 +145,13 @@ const NotificationManagement = () => {
 
   const handleDeleteNotification = async (notificationId) => {
     try {
-      const response = await fetch(`/api/admin/notifications/${notificationId}`, {
+      const token = localStorage.getItem('authToken');
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
+      
+      const response = await fetch(`${baseURL}/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -364,7 +425,7 @@ const NotificationManagement = () => {
                     type="text"
                     value={newNotification.title}
                     onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                     placeholder="Enter notification title"
                   />
                 </div>
@@ -377,7 +438,7 @@ const NotificationManagement = () => {
                     value={newNotification.message}
                     onChange={(e) => setNewNotification({ ...newNotification, message: e.target.value })}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                     placeholder="Enter notification message"
                   />
                 </div>
@@ -389,13 +450,20 @@ const NotificationManagement = () => {
                     </label>
                     <select
                       value={newNotification.recipients}
-                      onChange={(e) => setNewNotification({ ...newNotification, recipients: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={(e) => {
+                        setNewNotification({ ...newNotification, recipients: e.target.value });
+                        setShowUserSelector(e.target.value === 'specific');
+                        if (e.target.value !== 'specific') {
+                          setSelectedUsers([]);
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                     >
                       <option value="all">All Users</option>
                       <option value="students">Students Only</option>
                       <option value="instructors">Instructors Only</option>
                       <option value="admins">Admins Only</option>
+                      <option value="specific">Specific Users</option>
                     </select>
                   </div>
                   
@@ -406,15 +474,105 @@ const NotificationManagement = () => {
                     <select
                       value={newNotification.type}
                       onChange={(e) => setNewNotification({ ...newNotification, type: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                     >
+                      <option value="announcement">Announcement</option>
                       <option value="info">Info</option>
-                      <option value="success">Success</option>
-                      <option value="warning">Warning</option>
-                      <option value="error">Error</option>
+                      <option value="welcome">Welcome</option>
+                      <option value="reminder">Reminder</option>
+                      <option value="system_maintenance">System Maintenance</option>
+                      <option value="course_update">Course Update</option>
+                      <option value="custom">Custom</option>
                     </select>
                   </div>
                 </div>
+                
+                {/* User Selector for Specific Users */}
+                {showUserSelector && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Users ({selectedUsers.length} selected)
+                    </label>
+                    <div className="mb-3 space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Search users..."
+                        value={userSearchTerm}
+                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const filteredUsers = users.filter(user => 
+                              user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                              user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+                            );
+                            setSelectedUsers(filteredUsers);
+                          }}
+                          className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUsers([])}
+                          className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+                      <div className="space-y-2">
+                        {users
+                          .filter(user => 
+                            user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                            user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+                          )
+                          .map((user) => (
+                          <label key={user.id} className="flex items-center space-x-3 p-2 hover:bg-white rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedUsers.some(selected => selected.id === user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUsers([...selectedUsers, user]);
+                                } else {
+                                  setSelectedUsers(selectedUsers.filter(selected => selected.id !== user.id));
+                                }
+                              }}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <img
+                              src={user.avatar}
+                              alt={user.name}
+                              className="h-8 w-8 rounded-full"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                            </div>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                              user.role === 'instructor' ? 'bg-blue-100 text-blue-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      {users.length === 0 && (
+                        <p className="text-gray-500 text-center py-4">No users found</p>
+                      )}
+                    </div>
+                    {selectedUsers.length === 0 && (
+                      <p className="text-red-500 text-sm mt-1">Please select at least one user</p>
+                    )}
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

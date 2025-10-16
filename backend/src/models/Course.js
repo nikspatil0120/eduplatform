@@ -151,6 +151,11 @@ const courseSchema = new mongoose.Schema({
     images: [String]
   },
   curriculum: [sectionSchema],
+  enrolledStudents: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  }],
   requirements: [{
     type: String,
     trim: true

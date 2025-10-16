@@ -44,7 +44,7 @@ const CourseCatalog = () => {
     const fetchCourses = async () => {
       try {
         setLoading(true)
-        const response = await courseAPI.getCourses()
+        const response = await courseAPI.getCourses({ limit: 12, page: 1 }, { suppressGlobalErrorToast: true })
         const coursesData = response.data?.data?.courses || response.data?.courses || []
         
         // Transform backend data to match frontend expectations
@@ -62,49 +62,12 @@ const CourseCatalog = () => {
           tags: course.tags || [],
           bestseller: course.stats?.enrolledStudents > 1000
         }))
-        
+
         setCourses(transformedCourses)
       } catch (error) {
         console.error('Failed to fetch courses:', error)
-        
-        // Check if it's a network error (backend not running)
-        if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
-          toast.error('Backend server is not running. Please start the backend.')
-        } else {
-          toast.error('Failed to load courses. Please try again.')
-        }
-        
-        // Fallback to sample courses when backend is not available
-        setCourses([
-          {
-            id: 'sample-1',
-            title: 'Complete JavaScript Mastery',
-            instructor: 'Sample Instructor',
-            category: 'programming',
-            level: 'beginner',
-            rating: 4.8,
-            students: 1250,
-            duration: '40 hours',
-            thumbnail: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400',
-            description: 'Master JavaScript from basics to advanced concepts with real-world projects',
-            tags: ['JavaScript', 'Web Development', 'Programming'],
-            bestseller: true
-          },
-          {
-            id: 'sample-2',
-            title: 'Python for Data Science',
-            instructor: 'Sample Instructor',
-            category: 'data-science',
-            level: 'intermediate',
-            rating: 4.7,
-            students: 890,
-            duration: '50 hours',
-            thumbnail: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400',
-            description: 'Learn Python programming specifically for data analysis and machine learning',
-            tags: ['Python', 'Data Science', 'Machine Learning'],
-            bestseller: false
-          }
-        ])
+        toast.error('Failed to fetch courses')
+        setCourses([])
       } finally {
         setLoading(false)
       }

@@ -5,7 +5,7 @@
   "description": "Modern e-learning platform with Azure integration",
   "main": "index.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 3000",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx,ts,tsx",
@@ -23,6 +23,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@google-cloud/local-auth": "^3.0.1",
     "@headlessui/react": "^1.7.0",
     "@heroicons/react": "^2.0.18",
@@ -82,7 +83,6 @@
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "@vitejs/plugin-react": "^4.0.0",
-
     "autoprefixer": "^10.4.14",
     "cypress": "^12.17.4",
     "eslint": "^8.45.0",

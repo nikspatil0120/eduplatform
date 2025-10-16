@@ -9,12 +9,21 @@ const GoogleSignInButton = ({ text = "Continue with Google", className = "" }) =
 
   const handleGoogleSignIn = async () => {
     try {
+      console.log('🔄 Starting Google sign-in...')
       const result = await loginWithGoogle()
+      console.log('📡 Google sign-in result:', result)
+      
       if (result && result.success) {
-        navigate('/dashboard')
+        console.log('✅ Google sign-in successful, navigating to dashboard...')
+        // Small delay to ensure user state is updated
+        setTimeout(() => {
+          navigate('/dashboard')
+        }, 100)
+      } else {
+        console.warn('❌ Google sign-in failed or returned unsuccessful result:', result)
       }
     } catch (error) {
-      console.error('Google sign-in failed:', error)
+      console.error('❌ Google sign-in error:', error)
     }
   }
 

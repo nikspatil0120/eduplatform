@@ -28,7 +28,7 @@ const notificationSchema = new mongoose.Schema({
       // Instructor related
       'new_student_enrolled', 'assignment_submitted', 'question_asked',
       // General
-      'announcement', 'reminder', 'welcome', 'custom'
+      'announcement', 'reminder', 'welcome', 'custom', 'info'
     ],
     required: true,
     index: true

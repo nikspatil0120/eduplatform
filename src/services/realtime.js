@@ -55,27 +55,7 @@ class RealtimeService {
     }
   }
 
-  async initializeSocketIO(token) {
-    try {
-      const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
-      
-      this.socketIOConnection = io(socketUrl, {
-        auth: {
-          token: token
-        },
-        transports: ['websocket', 'polling'],
-        upgrade: true,
-        rememberUpgrade: true
-      })
 
-      this.setupSocketIOEventHandlers()
-      
-      console.log('Socket.IO initialized')
-    } catch (error) {
-      console.error('Socket.IO Connection Error:', error)
-      toast.error('Failed to connect to real-time services')
-    }
-  }
 
   setupSignalREventHandlers() {
     if (!this.signalRConnection) return
@@ -142,6 +122,30 @@ class RealtimeService {
       this.handleSystemAnnouncement(announcement)
     })
   }
+
+  async initializeSocketIO(token) {
+    try {
+      const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
+      
+      this.socketIOConnection = io(socketUrl, {
+        auth: {
+          token: token
+        },
+        transports: ['websocket', 'polling'],
+        upgrade: true,
+        rememberUpgrade: true
+      })
+
+      this.setupSocketIOEventHandlers()
+      
+      console.log('Socket.IO initialized')
+    } catch (error) {
+      console.error('Socket.IO Connection Error:', error)
+      toast.error('Failed to connect to real-time services')
+    }
+  }
+
+
 
   setupSocketIOEventHandlers() {
     if (!this.socketIOConnection) return

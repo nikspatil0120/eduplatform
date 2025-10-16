@@ -16,8 +16,13 @@ import UnauthorizedPage from './pages/UnauthorizedPage'
 import Dashboard from './pages/Dashboard'
 import CourseCatalog from './pages/CourseCatalog'
 import CourseDetail from './pages/CourseDetail'
-import NoteTaking from './pages/NoteTaking'
+
+import Notifications from './pages/Notifications'
+import Profile from './pages/Profile'
 import AdminPanel from './pages/admin/AdminPanel'
+import NotFound from './pages/NotFound'
+import GlobalErrorBoundary from './components/GlobalErrorBoundary'
+import CertificateView from './pages/CertificateView'
 
 const AppContent = () => {
   const { loading } = useAuth()
@@ -45,6 +50,8 @@ const AppContent = () => {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route path="/courses" element={<CourseCatalog />} />
           <Route path="/course/:id" element={<CourseDetail />} />
+          <Route path="/certificate/:id" element={<CertificateView />} />
+          <Route path="*" element={<NotFound />} />
           
           {/* Protected Routes */}
           <Route path="/dashboard" element={
@@ -52,9 +59,15 @@ const AppContent = () => {
               <Dashboard />
             </ProtectedRoute>
           } />
-          <Route path="/notes" element={
+
+          <Route path="/notifications" element={
             <ProtectedRoute>
-              <NoteTaking />
+              <Notifications />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           } />
           
@@ -86,7 +99,9 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <AppContent />
+          <GlobalErrorBoundary>
+            <AppContent />
+          </GlobalErrorBoundary>
         </Router>
       </AuthProvider>
     </ThemeProvider>

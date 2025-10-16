@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, Shield, BookOpen } from 'lucide-react'
@@ -12,8 +12,19 @@ const AdminLoginPage = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { adminLogin } = useAuth()
+  const { adminLogin, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
+
+  // Redirect authenticated admin users to admin panel
+  useEffect(() => {
+    if (isAuthenticated && user && user.role === 'admin') {
+      console.log('🔄 Admin already authenticated, redirecting to admin panel...')
+      navigate('/admin', { replace: true })
+    } else if (isAuthenticated && user && user.role !== 'admin') {
+      console.log('🔄 Non-admin user authenticated, redirecting to dashboard...')
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, user, navigate])
 
   const handleChange = (e) => {
     setFormData({

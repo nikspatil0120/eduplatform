@@ -7,7 +7,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  // Keep UX snappy during dev: fail fast and fall back if backend is down
+  timeout: 6000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,14 +32,21 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const { response } = error
+    const { response, config } = error
+    // Allow callers to suppress global error toasts for handled flows
+    if (config?.suppressGlobalErrorToast) {
+      return Promise.reject(error)
+    }
     
     if (response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem('authToken')
       localStorage.removeItem('userData')
       toast.error('Session expired. Please login again.')
-      window.location.href = '/login'
+      // Allow specific calls to suppress redirect and handle navigation in UI
+      if (!config?.suppressAuthRedirect) {
+        window.location.href = '/login'
+      }
     } else if (response?.status === 403) {
       toast.error('Access denied. You do not have permission to perform this action.')
     } else if (response?.status === 429) {
@@ -77,16 +85,27 @@ export const userAPI = {
 }
 
 export const courseAPI = {
-  getCourses: (params) => api.get('/courses', { params }),
-  getCourseById: (id) => api.get(`/courses/${id}`),
+  getCourses: (params, options = {}) => api.get('/courses', { params, ...options }),
+  getCourseById: (id, options = {}) => api.get(`/courses/${id}`, { ...options }),
   createCourse: (data) => api.post('/courses', data),
   updateCourse: (id, data) => api.put(`/courses/${id}`, data),
   deleteCourse: (id) => api.delete(`/courses/${id}`),
-  enrollCourse: (courseId) => api.post(`/courses/${courseId}/enroll`),
-  unenrollCourse: (courseId) => api.post(`/courses/${courseId}/unenroll`),
-  getEnrolledCourses: () => api.get('/courses/enrolled'),
-  getCourseProgress: (courseId) => api.get(`/courses/${courseId}/progress`),
-  updateProgress: (courseId, lessonId) => api.post(`/courses/${courseId}/progress`, { lessonId }),
+  enrollCourse: (courseId, data = {}, options = {}) => api.post(`/courses/${courseId}/enroll`, data, { suppressAuthRedirect: true, ...options }),
+  unenrollCourse: (courseId, options = {}) => api.post(`/courses/${courseId}/unenroll`, undefined, { ...options }),
+  getEnrolledCourses: (options = {}) => api.get('/courses/enrolled', { ...options }),
+  getCourseProgress: (courseId, options = {}) => api.get(`/courses/${courseId}/progress`, { ...options }),
+  updateProgress: (courseId, lessonId, options = {}) => api.post(`/courses/${courseId}/progress`, { lessonId }, { ...options }),
+}
+
+// User Progress API
+export const userProgressAPI = {
+  getAllProgress: (options = {}) => api.get('/user-progress', { ...options }),
+  getCourseProgress: (courseId, options = {}) => api.get(`/user-progress/${courseId}`, { ...options }),
+  markLessonComplete: (courseId, lessonId, watchTime = 0, options = {}) => 
+    api.post(`/user-progress/${courseId}/lesson`, { lessonId, watchTime }, { ...options }),
+  addCertificate: (courseId, certificateId, courseName, options = {}) => 
+    api.post(`/user-progress/${courseId}/certificate`, { certificateId, courseName }, { ...options }),
+  resetProgress: (courseId, options = {}) => api.delete(`/user-progress/${courseId}`, { ...options }),
 }
 
 export const notesAPI = {
@@ -98,11 +117,31 @@ export const notesAPI = {
   shareNote: (id, shareData) => api.post(`/notes/${id}/share`, shareData),
 }
 
+export const notificationAPI = {
+  getNotifications: (params = {}) => api.get('/notifications', { params }),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/mark-all-read'),
+  deleteNotification: (id) => api.delete(`/notifications/${id}`),
+
+}
+
 export const quizAPI = {
   getQuizzes: (courseId) => api.get(`/courses/${courseId}/quizzes`),
   getQuizById: (id) => api.get(`/quizzes/${id}`),
   submitQuiz: (id, answers) => api.post(`/quizzes/${id}/submit`, { answers }),
   getQuizResults: (id) => api.get(`/quizzes/${id}/results`),
+}
+
+export const profileAPI = {
+  getAvatarStatus: () => api.get('/profile/avatar-status'),
+  uploadAvatar: (formData) => api.post('/profile/upload-avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  deleteAvatar: () => api.delete('/profile/delete-avatar'),
+  updateProfile: (data) => api.put('/profile/update', data),
 }
 
 export const paymentAPI = {
@@ -269,17 +308,7 @@ export const chatAPI = {
   getChatAnalytics: (courseId, params) => api.get(`/chat/analytics/${courseId}`, { params }),
 }
 
-// Notification API
-export const notificationAPI = {
-  getNotifications: (params) => api.get('/notifications', { params }),
-  getUnreadCount: () => api.get('/notifications/unread-count'),
-  markAsRead: (id) => api.put(`/notifications/${id}/read`),
-  markAllAsRead: () => api.put('/notifications/mark-all-read'),
-  archiveNotification: (id) => api.put(`/notifications/${id}/archive`),
-  deleteNotification: (id) => api.delete(`/notifications/${id}`),
-  getPreferences: () => api.get('/notifications/preferences'),
-  updatePreferences: (data) => api.put('/notifications/preferences', data),
-}
+
 
 // Learning Path API
 export const learningPathAPI = {

@@ -34,6 +34,8 @@ class NotificationService {
   // Create and send notification
   async createNotification(data) {
     try {
+      console.log('🔔 NotificationService.createNotification called with data:', data)
+      
       const {
         userId,
         type,
@@ -45,19 +47,28 @@ class NotificationService {
         channels = [this.channels.IN_APP],
         scheduleAt
       } = data
+      
+      console.log('📋 Extracted userId:', userId)
+      console.log('📋 Extracted type:', type)
 
       // Create notification in database
-      const notification = new Notification({
-        userId,
+      const notificationData = {
+        recipientId: userId,
         type,
         title,
         message,
         priority,
-        actionUrl,
-        metadata,
-        channels,
-        scheduleAt: scheduleAt ? new Date(scheduleAt) : undefined
-      })
+        context: {
+          relatedUrl: actionUrl,
+          metadata
+        },
+        channels: channels.map(channel => ({ type: channel })),
+        scheduledFor: scheduleAt ? new Date(scheduleAt) : undefined
+      }
+      
+      console.log('💾 Creating notification with data:', notificationData)
+      
+      const notification = new Notification(notificationData)
 
       await notification.save()
 
@@ -76,7 +87,7 @@ class NotificationService {
   // Send notification through configured channels
   async sendNotification(notification) {
     try {
-      const user = await this.getUserWithPreferences(notification.userId)
+      const user = await this.getUserWithPreferences(notification.recipientId)
       if (!user) {
         logger.warn(`User not found for notification: ${notification._id}`)
         return

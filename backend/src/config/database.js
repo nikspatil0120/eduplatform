@@ -1,93 +1,61 @@
 import mongoose from 'mongoose'
-import { CosmosClient } from '@azure/cosmos'
 import { logger } from '../utils/logger.js'
 
-// MongoDB/Cosmos DB connection
+// MongoDB connection
 export const connectDatabase = async () => {
   try {
-    let mongoUri = process.env.MONGODB_URI
+    const mongoUri = process.env.MONGODB_URI
 
     if (!mongoUri) {
-      throw new Error('Database connection string not provided')
+      throw new Error('MONGODB_URI environment variable is required')
     }
 
-    // Fix URL encoding for Cosmos DB keys
-    if (mongoUri.includes('cosmos.azure.com') && !mongoUri.includes('%3D%3D')) {
-      // URL encode the == at the end of the key
-      mongoUri = mongoUri.replace(/([A-Za-z0-9+/])={1,2}@/, '$1%3D%3D@')
-      logger.info('Fixed URL encoding for Cosmos DB connection string')
-    }
-
-    // MongoDB connection options optimized for Cosmos DB
+    // MongoDB connection options
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 10000, // Increased for Cosmos DB
+      serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 10000,
-      family: 4, // Use IPv4, skip trying IPv6
-      retryWrites: false, // Cosmos DB doesn't support retryWrites
-      w: 'majority',
-      ssl: true,
-      sslValidate: true
+      retryWrites: true, // Enable retry writes for better reliability
+      w: 'majority'
     }
 
-    // Connect to MongoDB/Cosmos DB
+    // Connect to MongoDB
     await mongoose.connect(mongoUri, options)
 
-    logger.info('✅ Database connected successfully')
+    logger.info('✅ MongoDB connected successfully')
 
     // Handle connection events
     mongoose.connection.on('error', (error) => {
-      logger.error('❌ Database connection error:', error)
+      logger.error('❌ MongoDB connection error:', error)
     })
 
     mongoose.connection.on('disconnected', () => {
-      logger.warn('⚠️ Database disconnected')
+      logger.warn('⚠️ MongoDB disconnected')
     })
 
     mongoose.connection.on('reconnected', () => {
-      logger.info('🔄 Database reconnected')
+      logger.info('🔄 MongoDB reconnected')
     })
 
     // Graceful shutdown
     process.on('SIGINT', async () => {
       await mongoose.connection.close()
-      logger.info('📴 Database connection closed through app termination')
+      logger.info('📴 MongoDB connection closed through app termination')
       process.exit(0)
     })
 
   } catch (error) {
-    logger.error('❌ Database connection failed:', error)
+    logger.error('❌ MongoDB connection failed:', error)
     process.exit(1)
   }
 }
 
-// Azure Cosmos DB client (for advanced operations)
-export const createCosmosClient = () => {
-  if (!process.env.COSMOS_DB_ENDPOINT || !process.env.COSMOS_DB_KEY) {
-    logger.warn('Cosmos DB credentials not provided, using MongoDB connection only')
-    return null
-  }
-
-  try {
-    const client = new CosmosClient({
-      endpoint: process.env.COSMOS_DB_ENDPOINT,
-      key: process.env.COSMOS_DB_KEY,
-      connectionPolicy: {
-        requestTimeout: 30000,
-        enableEndpointDiscovery: true,
-        preferredLocations: ['East US', 'West US 2'], // Add your preferred regions
-      }
-    })
-
-    logger.info('✅ Cosmos DB client initialized')
-    return client
-  } catch (error) {
-    logger.error('❌ Failed to initialize Cosmos DB client:', error)
-    return null
-  }
+// MongoDB client helper functions
+export const getMongoClient = () => {
+  return mongoose.connection.getClient()
 }
 
 // Database health check
@@ -165,7 +133,7 @@ export const createIndexes = async () => {
 
 export default {
   connectDatabase,
-  createCosmosClient,
+  getMongoClient,
   checkDatabaseHealth,
   createIndexes
 }
