@@ -612,11 +612,9 @@ const CourseDetail = () => {
                 {reviews.map((review) => (
                     <div key={review.id} className="card p-6">
                       <div className="flex items-start space-x-4">
-                        {review.avatar ? (
-                          <img src={review.avatar} alt={review.user} className="w-12 h-12 rounded-full" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-300 dark:bg-gray-600" />
-                        )}
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                          {review.user ? review.user.charAt(0).toUpperCase() : 'U'}
+                        </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="font-medium text-gray-900 dark:text-white">

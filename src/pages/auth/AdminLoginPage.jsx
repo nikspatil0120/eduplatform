@@ -17,6 +17,8 @@ const AdminLoginPage = () => {
 
   // Redirect authenticated admin users to admin panel
   useEffect(() => {
+    console.log('🔍 AdminLoginPage useEffect:', { isAuthenticated, user: user?.role, userObj: user })
+    
     if (isAuthenticated && user && user.role === 'admin') {
       console.log('🔄 Admin already authenticated, redirecting to admin panel...')
       navigate('/admin', { replace: true })
@@ -38,13 +40,22 @@ const AdminLoginPage = () => {
     setLoading(true)
 
     try {
+      console.log('🔐 Attempting admin login...')
       const result = await adminLogin(formData.email, formData.password)
+      console.log('🔐 Admin login result:', result)
       
       if (result.success) {
-        navigate('/admin')
+        console.log('✅ Admin login successful, user role:', result.user?.role)
+        console.log('🔄 Navigating to /admin...')
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+          navigate('/admin')
+        }, 100)
+      } else {
+        console.error('❌ Admin login failed:', result.error)
       }
     } catch (error) {
-      console.error('Admin login error:', error)
+      console.error('❌ Admin login error:', error)
     } finally {
       setLoading(false)
     }

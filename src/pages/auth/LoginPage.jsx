@@ -13,33 +13,99 @@ const LoginPage = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { login, isAuthenticated, user } = useAuth()
+  const { login, isAuthenticated, user, sendOTP, verifyOTP, resendOTP } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Redirect authenticated users to dashboard
+  const [step, setStep] = useState('email') // 'email' or 'otp'
+  const [otpCode, setOtpCode] = useState('')
+  const [otpEmail, setOtpEmail] = useState('') // Store email for OTP verification
+
+  // Redirect authenticated users to appropriate page
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('🔄 User already authenticated, redirecting to dashboard...')
-      const from = location.state?.from?.pathname || '/dashboard'
-      navigate(from, { replace: true })
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true })
+      } else {
+        const from = location.state?.from?.pathname || '/dashboard'
+        navigate(from, { replace: true })
+      }
     }
   }, [isAuthenticated, user, navigate, location.state?.from?.pathname])
 
-  const [step, setStep] = useState('email') // 'email' or 'otp'
-  const [otpCode, setOtpCode] = useState('')
-  const { sendOTP, verifyOTP, resendOTP } = useAuth()
+  // Debug step changes and prevent unwanted resets
+  useEffect(() => {
+    console.log('📋 Login step:', step)
+    console.log('📝 Login form data:', formData)
+    
+    // If step changes to 'email' but we have OTP data, restore OTP step
+    if (step === 'email' && localStorage.getItem('login_step') === 'otp') {
+      const savedEmail = localStorage.getItem('login_email')
+      if (savedEmail) {
+        console.log('🔄 Preventing step reset, restoring OTP step')
+        setStep('otp')
+        setOtpEmail(savedEmail)
+      }
+    }
+  }, [step, formData])
+
+  // Debug stored values
+  useEffect(() => {
+    console.log('💾 Stored login OTP data:', { otpEmail })
+  }, [otpEmail])
+
+  // Restore step and data from localStorage on component mount
+  useEffect(() => {
+    const savedStep = localStorage.getItem('login_step')
+    const savedEmail = localStorage.getItem('login_email')
+    
+    if (savedStep === 'otp' && savedEmail) {
+      console.log('🔄 Restoring login OTP step from localStorage')
+      setStep('otp')
+      setOtpEmail(savedEmail)
+      setFormData(prev => ({
+        ...prev,
+        email: savedEmail
+      }))
+    }
+  }, [])
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault()
+    
+    if (!formData.email.trim()) {
+      toast.error('Email is required')
+      return
+    }
+
     setLoading(true)
 
     try {
+      console.log('🔄 Sending OTP for login:', formData.email)
       const result = await sendOTP(formData.email, 'login')
+      console.log('📧 Login OTP result:', result)
+      
       if (result.success) {
+        console.log('✅ OTP sent successfully, switching to OTP step')
+        // Store email for OTP verification
+        const emailToStore = formData.email || otpEmail
+        
+        setOtpEmail(emailToStore)
+        
+        // Also store in localStorage as backup
+        localStorage.setItem('login_email', emailToStore)
+        localStorage.setItem('login_step', 'otp')
+        
+        console.log('💾 Storing login OTP data:', { emailToStore })
+        
+        // Force step change immediately
         setStep('otp')
+        toast.success('OTP sent! Check your email.')
+      } else {
+        toast.error(result.error || 'Failed to send OTP')
       }
     } catch (error) {
+      console.error('❌ Login OTP error:', error)
       toast.error('An error occurred while sending OTP')
     } finally {
       setLoading(false)
@@ -48,15 +114,41 @@ const LoginPage = () => {
 
   const handleOTPSubmit = async (e) => {
     e.preventDefault()
+    
+    if (!otpCode.trim() || otpCode.length !== 6) {
+      toast.error('Please enter a valid 6-digit OTP')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const result = await verifyOTP(formData.email, otpCode, 'login')
+      // Use stored email for verification (with localStorage fallback)
+      const emailToUse = otpEmail || formData.email || localStorage.getItem('login_email')
+      
+      if (!emailToUse) {
+        toast.error('Missing email. Please go back and fill the form.')
+        setStep('email')
+        return
+      }
+
+      console.log('🔐 Verifying OTP for login:', { email: emailToUse, otp: otpCode })
+      const result = await verifyOTP(emailToUse, otpCode, 'login', undefined)
+      console.log('✅ Login verification result:', result)
+      
       if (result.success) {
+        // Clean up localStorage
+        localStorage.removeItem('login_email')
+        localStorage.removeItem('login_step')
+        
         const from = location.state?.from?.pathname || location.state?.from || '/dashboard'
         navigate(from, { replace: true })
+        toast.success('Login successful!')
+      } else {
+        toast.error(result.error || 'Invalid OTP')
       }
     } catch (error) {
+      console.error('❌ Login verification error:', error)
       toast.error('An error occurred during verification')
     } finally {
       setLoading(false)
@@ -65,19 +157,40 @@ const LoginPage = () => {
 
   const handleResendOTP = async () => {
     try {
-      await resendOTP(formData.email, 'login')
+      const emailToUse = otpEmail || formData.email || localStorage.getItem('login_email')
+      console.log('🔄 Resending OTP for login:', emailToUse)
+      const result = await resendOTP(emailToUse, 'login')
+      if (result.success) {
+        toast.success('OTP resent! Check your email.')
+      } else {
+        toast.error(result.error || 'Failed to resend OTP')
+      }
     } catch (error) {
+      console.error('❌ Resend OTP error:', error)
       toast.error('Failed to resend OTP')
     }
   }
 
-  const handleSubmit = step === 'email' ? handleEmailSubmit : handleOTPSubmit
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (step === 'email') {
+      handleEmailSubmit(e)
+    } else {
+      handleOTPSubmit(e)
+    }
+  }
 
   const handleChange = (e) => {
-    setFormData({
+    const newFormData = {
       ...formData,
       [e.target.name]: e.target.value
-    })
+    }
+    setFormData(newFormData)
+    
+    // Also store email immediately for persistence
+    if (e.target.name === 'email') {
+      setOtpEmail(e.target.value)
+    }
   }
 
   return (
@@ -144,7 +257,7 @@ const LoginPage = () => {
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     We've sent a 6-digit code to
                   </p>
-                  <p className="font-medium text-gray-900 dark:text-white">{formData.email}</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{otpEmail || formData.email}</p>
                 </div>
                 <div>
                   <label htmlFor="otp" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -195,7 +308,10 @@ const LoginPage = () => {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => setStep('email')}
+                onClick={() => {
+                  localStorage.removeItem('login_step')
+                  setStep('email')
+                }}
                 className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
               >
                 ← Change email address

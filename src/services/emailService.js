@@ -40,7 +40,7 @@ class EmailService {
         otp_code: otp
       }
 
-      console.log('📧 Sending email via EmailJS...', { email, otp })
+      console.log('📧 Sending email via EmailJS to:', email)
       console.log('📧 Template params:', templateParams)
       console.log('📧 Service config:', { 
         serviceId: this.serviceId, 

@@ -19,17 +19,66 @@ const SignupPage = () => {
   const { signup, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
 
-  // Redirect authenticated users to dashboard
+  // Redirect authenticated users to appropriate page
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('🔄 User already authenticated, redirecting to dashboard...')
-      navigate('/dashboard', { replace: true })
+      if (user.role === 'admin') {
+        console.log('🔄 Admin user authenticated, redirecting to admin panel...')
+        navigate('/admin', { replace: true })
+      } else {
+        console.log('🔄 User already authenticated, redirecting to dashboard...')
+        navigate('/dashboard', { replace: true })
+      }
     }
   }, [isAuthenticated, user, navigate])
 
   const [step, setStep] = useState('email') // 'email' or 'otp'
   const [otpCode, setOtpCode] = useState('')
+  const [otpEmail, setOtpEmail] = useState('') // Store email for OTP verification
+  const [otpName, setOtpName] = useState('') // Store name for OTP verification
+
+  // Debug stored values
+  useEffect(() => {
+    console.log('💾 Stored OTP data:', { otpEmail, otpName })
+  }, [otpEmail, otpName])
+
+  // Restore step and data from localStorage on component mount
+  useEffect(() => {
+    const savedStep = localStorage.getItem('signup_step')
+    const savedEmail = localStorage.getItem('signup_email')
+    const savedName = localStorage.getItem('signup_name')
+    
+    if (savedStep === 'otp' && savedEmail && savedName) {
+      console.log('🔄 Restoring OTP step from localStorage')
+      setStep('otp')
+      setOtpEmail(savedEmail)
+      setOtpName(savedName)
+      setFormData(prev => ({
+        ...prev,
+        email: savedEmail,
+        name: savedName
+      }))
+    }
+  }, [])
   const { sendOTP, verifyOTP, resendOTP } = useAuth()
+
+  // Debug step changes and prevent unwanted resets
+  useEffect(() => {
+    console.log('📋 Current step:', step)
+    console.log('📝 Form data:', formData)
+    
+    // If step changes to 'email' but we have OTP data, restore OTP step
+    if (step === 'email' && localStorage.getItem('signup_step') === 'otp') {
+      const savedEmail = localStorage.getItem('signup_email')
+      const savedName = localStorage.getItem('signup_name')
+      if (savedEmail && savedName) {
+        console.log('🔄 Preventing step reset, restoring OTP step')
+        setStep('otp')
+        setOtpEmail(savedEmail)
+        setOtpName(savedName)
+      }
+    }
+  }, [step, formData])
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault()
@@ -39,14 +88,43 @@ const SignupPage = () => {
       return
     }
 
+    if (!formData.email.trim()) {
+      toast.error('Email is required')
+      return
+    }
+
     setLoading(true)
 
     try {
+      console.log('🔄 Sending OTP for:', formData.email, formData.name)
       const result = await sendOTP(formData.email, 'signup', formData.name)
-      if (result.success) {
+      console.log('📧 OTP result:', result)
+      
+      if (result && result.success) {
+        console.log('✅ OTP sent successfully, switching to OTP step')
+        // Store email and name for OTP verification
+        const emailToStore = formData.email || otpEmail
+        const nameToStore = formData.name || otpName
+        
+        setOtpEmail(emailToStore)
+        setOtpName(nameToStore)
+        
+        // Also store in localStorage as backup
+        localStorage.setItem('signup_email', emailToStore)
+        localStorage.setItem('signup_name', nameToStore)
+        localStorage.setItem('signup_step', 'otp')
+        
+        console.log('💾 Storing OTP data:', { emailToStore, nameToStore })
+        
+        // Force step change immediately
         setStep('otp')
+        toast.success('OTP sent! Check your email.')
+      } else {
+        console.log('❌ OTP send failed:', result)
+        toast.error(result?.error || 'Failed to send OTP')
       }
     } catch (error) {
+      console.error('❌ OTP error:', error)
       toast.error('An error occurred while sending OTP')
     } finally {
       setLoading(false)
@@ -55,14 +133,41 @@ const SignupPage = () => {
 
   const handleOTPSubmit = async (e) => {
     e.preventDefault()
+    
+    if (!otpCode.trim() || otpCode.length !== 6) {
+      toast.error('Please enter a valid 6-digit OTP')
+      return
+    }
+
+    // Use stored email and name for verification (with localStorage fallback)
+    const emailToUse = otpEmail || formData.email || localStorage.getItem('signup_email')
+    const nameToUse = otpName || formData.name || localStorage.getItem('signup_name')
+
+    if (!emailToUse || !nameToUse) {
+      toast.error('Missing email or name. Please go back and fill the form.')
+      setStep('email')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const result = await verifyOTP(formData.email, otpCode, 'signup', formData.name)
+      console.log('🔐 Verifying OTP for signup:', { email: emailToUse, otp: otpCode, name: nameToUse })
+      const result = await verifyOTP(emailToUse, otpCode, 'signup', nameToUse)
+      console.log('✅ Signup verification result:', result)
+      
       if (result.success) {
+        // Clean up localStorage
+        localStorage.removeItem('signup_email')
+        localStorage.removeItem('signup_name')
+        localStorage.removeItem('signup_step')
         navigate('/dashboard')
+        toast.success('Account created successfully!')
+      } else {
+        toast.error(result.error || 'Invalid OTP')
       }
     } catch (error) {
+      console.error('❌ Signup verification error:', error)
       toast.error('An error occurred during verification')
     } finally {
       setLoading(false)
@@ -71,19 +176,42 @@ const SignupPage = () => {
 
   const handleResendOTP = async () => {
     try {
-      await resendOTP(formData.email, 'signup')
+      console.log('🔄 Resending OTP for signup:', formData.email)
+      const result = await resendOTP(otpEmail || formData.email, 'signup', otpName || formData.name)
+      if (result.success) {
+        toast.success('OTP resent! Check your email.')
+      } else {
+        toast.error(result.error || 'Failed to resend OTP')
+      }
     } catch (error) {
+      console.error('❌ Resend OTP error:', error)
       toast.error('Failed to resend OTP')
     }
   }
 
-  const handleSubmit = step === 'email' ? handleEmailSubmit : handleOTPSubmit
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (step === 'email') {
+      handleEmailSubmit(e)
+    } else {
+      handleOTPSubmit(e)
+    }
+  }
 
   const handleChange = (e) => {
-    setFormData({
+    const newFormData = {
       ...formData,
       [e.target.name]: e.target.value
-    })
+    }
+    setFormData(newFormData)
+    
+    // Also store email and name immediately for persistence
+    if (e.target.name === 'email') {
+      setOtpEmail(e.target.value)
+    }
+    if (e.target.name === 'name') {
+      setOtpName(e.target.value)
+    }
   }
 
   return (
@@ -175,9 +303,9 @@ const SignupPage = () => {
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     We've sent a 6-digit code to
                   </p>
-                  <p className="font-medium text-gray-900 dark:text-white">{formData.email}</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{otpEmail || formData.email}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Account will be created for: <span className="font-medium">{formData.name}</span>
+                    Account will be created for: <span className="font-medium">{otpName || formData.name}</span>
                   </p>
                 </div>
                 <div>
@@ -241,7 +369,10 @@ const SignupPage = () => {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => setStep('email')}
+                onClick={() => {
+                  localStorage.removeItem('signup_step')
+                  setStep('email')
+                }}
                 className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
               >
                 ← Change details
@@ -263,6 +394,8 @@ const SignupPage = () => {
               step === 'email' ? 'Send OTP' : 'Verify & Create Account'
             )}
           </motion.button>
+
+
 
           {/* Social Login Options */}
           <div className="mt-6">

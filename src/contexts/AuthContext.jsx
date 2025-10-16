@@ -219,6 +219,9 @@ export const AuthProvider = ({ children }) => {
           toast.success('OTP generated! Check backend logs for the code.')
         }
         
+        // OTP sent successfully
+        toast.success('OTP sent! Check your email.')
+        
         return { success: true, data: data.data }
       } else {
         toast.error(data.message || 'Failed to send OTP')
@@ -237,12 +240,21 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       
+      const requestBody = { email, otp, purpose }
+      
+      // Only include name if it's provided and not empty
+      if (name && name.trim()) {
+        requestBody.name = name.trim()
+      }
+      
+      console.log('📤 Sending OTP verification request for:', email)
+      
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, otp, purpose, name }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()
@@ -425,6 +437,9 @@ export const AuthProvider = ({ children }) => {
 
       if (data.success) {
         const { user, token, refreshToken } = data.data
+        
+        console.log('🔐 Admin login successful, user data:', user)
+        console.log('🔐 User role:', user?.role)
         
         // Clear previous user's data only if different user
         await clearUserDataIfDifferentUser(user)

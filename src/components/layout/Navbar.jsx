@@ -15,6 +15,7 @@ import {
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
+import SimpleAvatar from '../ui/SimpleAvatar'
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -154,10 +155,11 @@ const Navbar = () => {
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
-                    <img
+                    <SimpleAvatar
                       src={user.avatar}
                       alt={user.name}
-                      className="h-8 w-8 rounded-full"
+                      size="sm"
+                      fallbackName={user.name}
                     />
                   </motion.button>
 

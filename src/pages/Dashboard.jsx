@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { 
@@ -25,6 +25,8 @@ const Dashboard = () => {
   const certificates = useCourseStore((s) => s.listCertificates())
   const manualSync = useCourseStore((s) => s.manualSync)
   const [showCertModal, setShowCertModal] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [loadingNotifications, setLoadingNotifications] = useState(true)
 
   const handleManualSync = async () => {
     console.log('🔄 Manual sync triggered')
@@ -44,56 +46,41 @@ const Dashboard = () => {
 
   const enrolledCourses = enrolled || []
 
-  const recentNotes = [
-    {
-      id: 1,
-      title: 'React Hooks Best Practices',
-      course: 'React Development Masterclass',
-      lastModified: '2 hours ago',
-      preview: 'useState and useEffect are the most commonly used hooks...'
-    },
-    {
-      id: 2,
-      title: 'Design System Components',
-      course: 'UI/UX Design Fundamentals',
-      lastModified: '1 day ago',
-      preview: 'Consistent design systems help maintain brand identity...'
-    },
-    {
-      id: 3,
-      title: 'Data Visualization Techniques',
-      course: 'Data Science with Python',
-      lastModified: '3 days ago',
-      preview: 'Matplotlib and Seaborn are powerful libraries for...'
+  // Fetch real notifications from database
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!isAuthenticated || !user) return
+      
+      try {
+        setLoadingNotifications(true)
+        const token = localStorage.getItem('authToken')
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/notifications?limit=5`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('📨 Fetched notifications:', data)
+          setNotifications(data.data || [])
+        } else {
+          console.error('Failed to fetch notifications:', response.status)
+          // Fallback to empty array if API fails
+          setNotifications([])
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error)
+        // Fallback to empty array if API fails
+        setNotifications([])
+      } finally {
+        setLoadingNotifications(false)
+      }
     }
-  ]
 
-  const notifications = [
-    {
-      id: 1,
-      type: 'assignment',
-      title: 'New assignment available',
-      message: 'React Development Masterclass - Build a Todo App',
-      time: '1 hour ago',
-      unread: true
-    },
-    {
-      id: 2,
-      type: 'achievement',
-      title: 'Achievement unlocked!',
-      message: 'Completed 5 courses this month',
-      time: '2 days ago',
-      unread: true
-    },
-    {
-      id: 3,
-      type: 'reminder',
-      title: 'Course deadline reminder',
-      message: 'UI/UX Design project due in 3 days',
-      time: '1 week ago',
-      unread: false
-    }
-  ]
+    fetchNotifications()
+  }, [isAuthenticated, user])
 
   const stats = [
     { label: 'Courses Enrolled', value: String(enrolled.length || 0), icon: BookOpen, color: 'bg-blue-500', change: '0 this month' },
@@ -257,7 +244,9 @@ const Dashboard = () => {
                 </div>
               )}
             </motion.div>
-            {/* Recent Notes */}
+
+
+            {/* Notifications */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -266,91 +255,88 @@ const Dashboard = () => {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Recent Notes
+                  Notifications
                 </h3>
                 <Link
-                  to="/notes"
+                  to="/notifications"
                   className="text-primary-600 hover:text-primary-700 text-sm font-medium"
                 >
                   View All
                 </Link>
               </div>
-              <div className="space-y-3">
-                {recentNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-start space-x-3">
-                      <FileText className="h-4 w-4 text-primary-600 mt-1 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {note.title}
-                        </h4>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                          {note.course}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 line-clamp-2">
-                          {note.preview}
-                        </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          {note.lastModified}
-                        </p>
+              
+              {loadingNotifications ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="flex items-start space-x-3 p-3">
+                        <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Notifications */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="card p-6"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Notifications
-              </h3>
-              <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 rounded-lg transition-colors cursor-pointer ${
-                      notification.unread
-                        ? 'bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-600'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className={`p-1 rounded-full ${
-                        notification.type === 'assignment' ? 'bg-blue-100 text-blue-600' :
-                        notification.type === 'achievement' ? 'bg-yellow-100 text-yellow-600' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {notification.type === 'assignment' && <BookOpen className="h-3 w-3" />}
-                        {notification.type === 'achievement' && <Award className="h-3 w-3" />}
-                        {notification.type === 'reminder' && <Calendar className="h-3 w-3" />}
+                  ))}
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="text-center py-6">
+                  <Bell className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    No notifications yet
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((notification) => {
+                    const isUnread = !notification.readAt
+                    const timeAgo = notification.createdAt ? 
+                      new Date(notification.createdAt).toLocaleDateString() : 
+                      'Recently'
+                    
+                    return (
+                      <div
+                        key={notification._id}
+                        className={`p-3 rounded-lg transition-colors cursor-pointer ${
+                          isUnread
+                            ? 'bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-600'
+                            : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`p-1 rounded-full ${
+                            notification.type === 'assignment' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400' :
+                            notification.type === 'course' ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400' :
+                            notification.type === 'system' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400' :
+                            notification.type === 'announcement' ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-400' :
+                            'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>
+                            {notification.type === 'assignment' && <BookOpen className="h-3 w-3" />}
+                            {notification.type === 'course' && <Play className="h-3 w-3" />}
+                            {notification.type === 'system' && <Bell className="h-3 w-3" />}
+                            {notification.type === 'announcement' && <Calendar className="h-3 w-3" />}
+                            {!['assignment', 'course', 'system', 'announcement'].includes(notification.type) && <Bell className="h-3 w-3" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                              {notification.title}
+                            </h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">
+                              {timeAgo}
+                            </p>
+                          </div>
+                          {isUnread && (
+                            <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          {notification.title}
-                        </h4>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                          {notification.time}
-                        </p>
-                      </div>
-                      {notification.unread && (
-                        <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </motion.div>
           </div>
         </div>

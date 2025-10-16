@@ -412,12 +412,16 @@ router.post('/google-oauth', async (req, res) => {
       
       // Only set Google avatar if user doesn't have a Cloudinary avatar
       if (avatar && !user.profile.avatar && !user.profile.avatarPublicId) {
+        console.log('🖼️ Setting Google avatar for existing user:', avatar)
         user.profile.avatar = avatar
+      } else {
+        console.log('🖼️ Not setting Google avatar. Current avatar:', user.profile.avatar, 'Has Cloudinary:', !!user.profile.avatarPublicId, 'New avatar:', avatar)
       }
       
       await user.save()
     } else {
       // Create new user
+      console.log('🆕 Creating new user with Google avatar:', avatar)
       user = new User({
         name,
         email,
@@ -440,11 +444,15 @@ router.post('/google-oauth', async (req, res) => {
     const authToken = user.generateAuthToken()
     const refreshToken = user.generateRefreshToken()
 
+    const publicProfile = user.getPublicProfile()
+    console.log('👤 Sending user profile to frontend:', publicProfile)
+    console.log('🖼️ Avatar in profile:', publicProfile.avatar)
+
     res.json({
       success: true,
       message: 'Google OAuth login successful',
       data: {
-        user: user.getPublicProfile(),
+        user: publicProfile,
         token: authToken,
         refreshToken
       }

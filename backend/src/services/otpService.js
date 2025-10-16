@@ -44,7 +44,7 @@ class OTPService {
       createdAt: Date.now()
     })
 
-    logger.info(`OTP stored for ${email} (${purpose}): ${otp}`)
+    logger.info(`OTP stored for ${email} (${purpose})`)
     return { success: true, expiryTime }
   }
 

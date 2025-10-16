@@ -17,6 +17,8 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { useCourseStore } from '../store'
 import { profileAPI } from '../services/api'
+import SimpleAvatar from '../components/ui/SimpleAvatar'
+import AvatarTest from '../components/debug/AvatarTest'
 import toast from 'react-hot-toast'
 
 const Profile = () => {
@@ -54,6 +56,11 @@ const Profile = () => {
         console.log('🔄 Loading profile data...')
         console.log('👤 Current user data:', user)
         console.log('🖼️ User avatar:', user?.avatar)
+        console.log('🔗 Avatar URL type:', typeof user?.avatar)
+        console.log('🌐 Provider:', user?.provider)
+        
+        // SimpleAvatar component will handle Google avatar URLs automatically
+        
         // Sync data from database
         await syncProgressFromDatabase()
         // Load avatar status
@@ -135,6 +142,7 @@ const Profile = () => {
     try {
       const response = await profileAPI.getAvatarStatus()
       const status = response.data?.data || {}
+      console.log('🔍 Avatar status from backend:', status)
       setAvatarStatus(status)
       return status
     } catch (error) {
@@ -363,10 +371,12 @@ const Profile = () => {
             {/* Profile Picture */}
             <div className="flex flex-col items-center">
               <div className="relative">
-                <img
-                  src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=6366f1&color=ffffff&size=128`}
+                <SimpleAvatar
+                  src={user?.avatar}
                   alt={user?.name}
-                  className="w-32 h-32 rounded-full object-cover border-4 border-primary-100 dark:border-primary-900"
+                  size="xl"
+                  fallbackName={user?.name}
+                  className="border-4 border-primary-100 dark:border-primary-900"
                 />
                 <div className="absolute bottom-0 right-0">
                   <input
@@ -656,6 +666,18 @@ const Profile = () => {
                 And {certificatesEarned - 4} more certificates...
               </p>
             )}
+          </motion.div>
+        )}
+
+        {/* Avatar Debug Tool - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8"
+          >
+            <AvatarTest user={user} />
           </motion.div>
         )}
 
