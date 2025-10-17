@@ -4,17 +4,29 @@ FROM node:20.18.0-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production
 
-# Copy source code
-COPY . .
+# Copy backend source code
+COPY src/ ./src/
+COPY start-production.js ./
+COPY debug-startup.js ./
+COPY verify-startup.js ./
+COPY create-admin-users.js ./
+COPY seed-data.js ./
 
-# Create logs directory
-RUN mkdir -p logs
+# Copy environment files
+COPY .env* ./
+
+# Create necessary directories
+RUN mkdir -p logs uploads
+
+# Set proper permissions
+RUN chown -R node:node /app
+USER node
 
 # Expose port
 EXPOSE $PORT
