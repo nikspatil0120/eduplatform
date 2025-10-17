@@ -18,7 +18,6 @@ postcss.config.js
 *~
 
 # Logs
-logs/
 *.log
 
 # OS files
@@ -43,3 +42,7 @@ start-backend.js
 
 # Kiro files
 .kiro/
+
+# Keep backend directory and its contents
+!backend/
+!backend/**
