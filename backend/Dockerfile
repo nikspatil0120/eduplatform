@@ -1,14 +1,23 @@
 # Use Node.js 20 LTS
 FROM node:20.18.0-alpine
 
+# Install system dependencies for native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    vips-dev \
+    libc6-compat
+
 # Set working directory
 WORKDIR /app
 
 # Copy package files first
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production --ignore-scripts
+# Install dependencies with proper sharp compilation
+RUN npm ci --only=production && \
+    npm rebuild sharp --platform=linuxmusl --arch=x64
 
 # Copy source code
 COPY src/ ./src/
