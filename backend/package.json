@@ -13,7 +13,7 @@
     "start": "node start-production.js",
     "start:direct": "node src/app.js",
     "debug": "node debug-startup.js",
-    "build": "echo 'No build step required'",
+    "build": "echo 'Backend - No build step required'",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/",
