@@ -4,17 +4,17 @@ FROM node:20.18.0-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files first (from backend directory)
-COPY backend/package.json backend/package-lock.json ./
+# Copy package files first
+COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm ci --only=production --ignore-scripts
 
-# Copy all backend files
-COPY backend/ ./
+# Copy source code
+COPY src/ ./src/
 
-# Remove unnecessary files to keep image clean
-RUN rm -f .env.example .env.railway nixpacks.toml railway.json .nvmrc .railway .dockerignore Dockerfile
+# Copy JavaScript files
+COPY *.js ./
 
 # Create necessary directories
 RUN mkdir -p logs uploads
