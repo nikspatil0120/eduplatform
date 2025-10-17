@@ -19,8 +19,8 @@ COPY backend/verify-startup.js ./
 COPY backend/create-admin-users.js ./
 COPY backend/seed-data.js ./
 
-# Copy environment files (but not .env.example)
-COPY backend/.env ./
+# Note: Environment variables will be provided by Railway
+# No need to copy .env file
 
 # Create necessary directories
 RUN mkdir -p logs uploads
