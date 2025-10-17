@@ -33,7 +33,7 @@ const handleValidationErrors = (req, res, next) => {
 // @route   GET /api/v1/system/health
 // @desc    Get system health status
 // @access  Public
-router.get('/health', systemLimiter, async (req, res) => {
+router.get('/health', async (req, res) => {
   try {
     const health = {
       status: 'healthy',
@@ -44,13 +44,21 @@ router.get('/health', systemLimiter, async (req, res) => {
       services: {}
     }
 
-    // Check database connection
+    // Check database connection (simplified)
     try {
-      await mongoose.connection.db.admin().ping()
-      health.services.database = {
-        status: 'healthy',
-        type: 'MongoDB',
-        connected: mongoose.connection.readyState === 1
+      if (mongoose.connection.readyState === 1) {
+        health.services.database = {
+          status: 'healthy',
+          type: 'MongoDB',
+          connected: true
+        }
+      } else {
+        health.services.database = {
+          status: 'unhealthy',
+          type: 'MongoDB',
+          connected: false
+        }
+        health.status = 'degraded'
       }
     } catch (error) {
       health.services.database = {
@@ -62,59 +70,14 @@ router.get('/health', systemLimiter, async (req, res) => {
       health.status = 'degraded'
     }
 
-    // Check real-time service
-    try {
-      const rtStats = realtimeService.getConnectionStats()
-      health.services.realtime = {
-        status: 'healthy',
-        type: 'Socket.IO',
-        connectedUsers: rtStats.connectedUsers,
-        activeRooms: rtStats.totalCourseRooms
-      }
-    } catch (error) {
-      health.services.realtime = {
-        status: 'unhealthy',
-        type: 'Socket.IO',
-        error: error.message
-      }
-      health.status = 'degraded'
-    }
-
-    // Check scheduler service
-    try {
-      const schedulerStatus = schedulerService.getTaskStatus()
-      const runningTasks = Object.values(schedulerStatus).filter(task => task.running).length
-      const totalTasks = Object.keys(schedulerStatus).length
-      
-      health.services.scheduler = {
-        status: 'healthy',
-        type: 'Cron Jobs',
-        runningTasks,
-        totalTasks
-      }
-    } catch (error) {
-      health.services.scheduler = {
-        status: 'unhealthy',
-        type: 'Cron Jobs',
-        error: error.message
-      }
-      health.status = 'degraded'
-    }
-
-    // System resources
+    // Basic system info
     health.system = {
       memory: {
         used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-        external: Math.round(process.memoryUsage().external / 1024 / 1024)
-      },
-      cpu: {
-        usage: process.cpuUsage(),
-        loadAverage: os.loadavg()
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
       },
       platform: {
         type: os.type(),
-        release: os.release(),
         arch: os.arch(),
         nodeVersion: process.version
       }

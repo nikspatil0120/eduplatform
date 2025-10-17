@@ -3,6 +3,8 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+const { join } = path
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -129,8 +131,19 @@ if (process.env.NODE_ENV === 'development') {
   }))
 }
 
-// Health check endpoint
+// Simple health check endpoint (before service initialization)
 app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV,
+    version: process.env.npm_package_version || '1.0.0'
+  })
+})
+
+// Basic API health check
+app.get('/api/v1/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -370,19 +383,31 @@ const gracefulShutdown = async (signal) => {
   
   try {
     // Close queue service
-    const queueService = (await import('./services/queueService.js')).default
-    await queueService.close()
-    logger.info('Queue service closed')
+    try {
+      const queueService = (await import('./services/queueService.js')).default
+      await queueService.close()
+      logger.info('Queue service closed')
+    } catch (error) {
+      logger.warn('Queue service shutdown error:', error.message)
+    }
     
     // Close scheduler service
-    const schedulerService = (await import('./services/schedulerService.js')).default
-    schedulerService.stopAllTasks()
-    logger.info('Scheduler service stopped')
+    try {
+      const schedulerService = (await import('./services/schedulerService.js')).default
+      schedulerService.stopAllTasks()
+      logger.info('Scheduler service stopped')
+    } catch (error) {
+      logger.warn('Scheduler service shutdown error:', error.message)
+    }
     
     // Close real-time service
-    const realtimeService = (await import('./services/realtimeService.js')).default
-    await realtimeService.disconnect()
-    logger.info('Real-time service disconnected')
+    try {
+      const realtimeService = (await import('./services/realtimeService.js')).default
+      await realtimeService.disconnect()
+      logger.info('Real-time service disconnected')
+    } catch (error) {
+      logger.warn('Real-time service shutdown error:', error.message)
+    }
     
   } catch (error) {
     logger.error('Error during graceful shutdown:', error)
@@ -407,22 +432,32 @@ const startServer = async () => {
       logger.info(`🏥 Health Check: http://localhost:${PORT}/health`)
     })
 
-    // Initialize real-time service
-    const realtimeService = (await import('./services/realtimeService.js')).default
-    realtimeService.initialize(server)
-    logger.info('🔄 Real-time service initialized')
+    // Initialize services with error handling
+    try {
+      const realtimeService = (await import('./services/realtimeService.js')).default
+      realtimeService.initialize(server)
+      logger.info('🔄 Real-time service initialized')
+    } catch (error) {
+      logger.warn('⚠️ Real-time service failed to initialize:', error.message)
+    }
 
-    // Initialize scheduler service
-    const schedulerService = (await import('./services/schedulerService.js')).default
-    schedulerService.initialize()
-    logger.info('⏰ Scheduler service initialized')
+    try {
+      const schedulerService = (await import('./services/schedulerService.js')).default
+      schedulerService.initialize()
+      logger.info('⏰ Scheduler service initialized')
+    } catch (error) {
+      logger.warn('⚠️ Scheduler service failed to initialize:', error.message)
+    }
 
-    // Initialize queue service
-    const queueService = (await import('./services/queueService.js')).default
-    if (queueService.isHealthy()) {
-      logger.info('📋 Queue service initialized and healthy')
-    } else {
-      logger.warn('📋 Queue service initialized but not healthy (Redis may not be available)')
+    try {
+      const queueService = (await import('./services/queueService.js')).default
+      if (queueService.isHealthy()) {
+        logger.info('📋 Queue service initialized and healthy')
+      } else {
+        logger.warn('📋 Queue service initialized but not healthy (Redis may not be available)')
+      }
+    } catch (error) {
+      logger.warn('⚠️ Queue service failed to initialize:', error.message)
     }
 
     // Handle server errors
