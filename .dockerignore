@@ -1,0 +1,45 @@
+# Frontend files (exclude from backend build)
+src/
+public/
+dist/
+node_modules/
+package.json
+package-lock.json
+vite.config.js
+tailwind.config.js
+index.html
+postcss.config.js
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Config files not needed in container
+vercel.json
+staticwebapp.config.json
+
+# Scripts not needed in container
+setup-*.js
+start-backend.js
+
+# Kiro files
+.kiro/

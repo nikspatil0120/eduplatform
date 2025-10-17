@@ -4,18 +4,17 @@ FROM node:20.18.0-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy backend package files first for better caching
-COPY backend/package*.json ./
+# Copy package files first (from backend directory)
+COPY backend/package.json backend/package-lock.json ./
 
-# Install dependencies (no build step)
+# Install dependencies
 RUN npm ci --only=production --ignore-scripts
 
-# Copy backend source code
-COPY backend/src/ ./src/
-COPY backend/*.js ./
+# Copy all backend files
+COPY backend/ ./
 
-# Note: Environment variables will be provided by Railway
-# No need to copy .env file
+# Remove unnecessary files to keep image clean
+RUN rm -f .env.example .env.railway nixpacks.toml railway.json .nvmrc .railway .dockerignore Dockerfile
 
 # Create necessary directories
 RUN mkdir -p logs uploads

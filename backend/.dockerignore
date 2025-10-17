@@ -1,33 +1,45 @@
+# Node.js
 node_modules
 npm-debug.log
-.git
-.gitignore
-README.md
-.env.example
-.nyc_output
-coverage
-.coverage
-.coverage.*
+.npm
+
+# Logs
 logs
 *.log
-.DS_Store
-Thumbs.db
+
+# Environment files (Railway provides these)
+.env
+.env.local
+.env.*.local
+
+# Development files
 .vscode
 .idea
 *.swp
 *.swo
 *~
+
+# Test files
 tests
-.github
+coverage
+.nyc_output
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
 docs
 
-# Frontend files (we only want backend)
-../src
-../public
-../dist
-../node_modules
-../package.json
-../package-lock.json
-../vite.config.js
-../tailwind.config.js
-../index.html
+# Build artifacts
+dist
+build
+
+# Temporary files
+tmp
+temp
