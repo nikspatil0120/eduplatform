@@ -4,23 +4,23 @@ FROM node:20.18.0-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files first for better caching
-COPY package*.json ./
+# Copy backend package files first for better caching
+COPY backend/package*.json ./
 
 # Install dependencies (no build step)
 RUN npm ci --only=production --ignore-scripts
 
 # Copy backend source code
-COPY src/ ./src/
-COPY start-production.js ./
-COPY railway-start.js ./
-COPY debug-startup.js ./
-COPY verify-startup.js ./
-COPY create-admin-users.js ./
-COPY seed-data.js ./
+COPY backend/src/ ./src/
+COPY backend/start-production.js ./
+COPY backend/railway-start.js ./
+COPY backend/debug-startup.js ./
+COPY backend/verify-startup.js ./
+COPY backend/create-admin-users.js ./
+COPY backend/seed-data.js ./
 
 # Copy environment files (but not .env.example)
-COPY .env ./
+COPY backend/.env ./
 
 # Create necessary directories
 RUN mkdir -p logs uploads
