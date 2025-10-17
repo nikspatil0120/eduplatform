@@ -12,12 +12,7 @@ RUN npm ci --only=production --ignore-scripts
 
 # Copy backend source code
 COPY backend/src/ ./src/
-COPY backend/start-production.js ./
-COPY backend/railway-start.js ./
-COPY backend/debug-startup.js ./
-COPY backend/verify-startup.js ./
-COPY backend/create-admin-users.js ./
-COPY backend/seed-data.js ./
+COPY backend/*.js ./
 
 # Note: Environment variables will be provided by Railway
 # No need to copy .env file
