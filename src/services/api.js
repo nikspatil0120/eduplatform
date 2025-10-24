@@ -2,13 +2,13 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 
 // API Configuration
-const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1` || 'http://localhost:3001/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1'
 
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  // Keep UX snappy during dev: fail fast and fall back if backend is down
-  timeout: 6000,
+  // Increased timeout for better reliability during development
+  timeout: 15000, // 15 seconds instead of 6
   headers: {
     'Content-Type': 'application/json',
   },
