@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+// import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
   plugins: [
     react(),
-    VitePWA({
+    // Temporarily disabled PWA plugin to fix build issues
+    /* VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
@@ -42,16 +43,13 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\.eduplatform\.com\/.*$/,
+            urlPattern: /^https:\/\/.*\.vercel\.app\/api\/.*$/,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              },
-              cacheKeyWillBeUsed: async ({ request }) => {
-                return `${request.url}?${Date.now()}`
+                maxAgeSeconds: 60 * 60 * 24
               }
             }
           },
@@ -62,7 +60,7 @@ export default defineConfig({
               cacheName: 'azure-blob-cache',
               expiration: {
                 maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxAgeSeconds: 60 * 60 * 24 * 7
               }
             }
           },
@@ -73,13 +71,13 @@ export default defineConfig({
               cacheName: 'images-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30
               }
             }
           }
         ]
       }
-    })
+    }) */
   ],
   resolve: {
     alias: {
