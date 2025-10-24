@@ -1,4 +1,4 @@
-# 🚀 Render Deployment Guide for EduPlatform
+# 🚀 EduPlatform Deployment Guide - Render + Vercel
 
 ## 📋 Prerequisites
 
