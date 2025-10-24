@@ -41,7 +41,8 @@ export default defineConfig({
         }
       }
     },
-    sourcemap: true
+    sourcemap: true,
+    assetsDir: 'assets'
   },
   optimizeDeps: {
     include: [
