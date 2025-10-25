@@ -14,11 +14,9 @@ import {
   Clock, 
   Users, 
   Award,
-  Download,
   BookOpen,
   CheckCircle,
   Lock,
-  FileText,
   MessageCircle,
   Share2
 } from 'lucide-react'
@@ -786,29 +784,7 @@ const CourseDetail = () => {
                 </div>
               </div>
 
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
-                <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                  This course includes:
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Play className="h-4 w-4 text-primary-600" />
-                    <span className="text-gray-700 dark:text-gray-300">42 hours on-demand video</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-primary-600" />
-                    <span className="text-gray-700 dark:text-gray-300">15 articles</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Download className="h-4 w-4 text-primary-600" />
-                    <span className="text-gray-700 dark:text-gray-300">Downloadable resources</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Award className="h-4 w-4 text-primary-600" />
-                    <span className="text-gray-700 dark:text-gray-300">Certificate of completion</span>
-                  </div>
-                </div>
-              </div>
+
             </motion.div>
           </div>
         </div>
