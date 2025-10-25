@@ -16,8 +16,7 @@ import {
   Star,
   Play,
   Image as ImageIcon,
-  FileText,
-  Settings
+  FileText
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import adminApi from '../../../services/adminApi'
@@ -161,17 +160,7 @@ const CourseManagement = () => {
     }
   }
 
-  const handleDebugCourses = async () => {
-    try {
-      console.log('🔧 Testing debug endpoint...')
-      const debugData = await adminApi.getDebugCourses()
-      console.log('🐛 Debug courses data:', debugData)
-      toast.success(`Found ${debugData.totalCourses} courses in database`)
-    } catch (error) {
-      console.error('❌ Debug error:', error)
-      toast.error('Debug failed: ' + error.message)
-    }
-  }
+
 
   return (
     <div className="space-y-6">
@@ -182,16 +171,7 @@ const CourseManagement = () => {
           <p className="text-gray-600 dark:text-gray-400">Manage and moderate platform courses</p>
         </div>
         <div className="flex items-center space-x-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleDebugCourses}
-            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center space-x-2"
-          >
-            <Settings className="h-4 w-4" />
-            <span>Debug</span>
-          </motion.button>
-          
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
