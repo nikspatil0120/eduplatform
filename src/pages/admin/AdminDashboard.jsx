@@ -297,39 +297,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveModule('users')}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
-                >
-                  <Users className="h-4 w-4" />
-                  <span>Add User</span>
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveModule('courses')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
-                >
-                  <BookOpen className="h-4 w-4" />
-                  <span>Add Course</span>
-                </motion.button>
 
-                <button
-                  onClick={toggleDarkMode}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </button>
-                
-                <button className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
-                </button>
-              </div>
             </div>
           </div>
 
