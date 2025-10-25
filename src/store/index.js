@@ -276,11 +276,23 @@ export const useCourseStore = create(
               // Add certificates
               if (courseProgress.certificates) {
                 courseProgress.certificates.forEach(cert => {
+                  // Get current user name from localStorage
+                  let actualUserName = 'Student'
+                  try {
+                    const userData = localStorage.getItem('userData')
+                    if (userData) {
+                      const user = JSON.parse(userData)
+                      actualUserName = user.name || 'Student'
+                    }
+                  } catch (e) {
+                    console.warn('Failed to parse user data for certificate sync:', e)
+                  }
+                  
                   state.certificates.push({
                     id: cert.certificateId,
                     courseId: courseProgress.courseId,
                     courseName: cert.courseName,
-                    userName: get().user?.name || 'Student',
+                    userName: cert.userName || actualUserName,
                     issuedAt: cert.issuedAt
                   })
                 })
@@ -362,6 +374,20 @@ export const useCourseStore = create(
       try {
         const certificateId = `cert_${Date.now()}`
         
+        // Get current user name from localStorage if userName is fallback
+        let actualUserName = userName
+        if (userName === 'Student' || !userName) {
+          try {
+            const userData = localStorage.getItem('userData')
+            if (userData) {
+              const user = JSON.parse(userData)
+              actualUserName = user.name || userName || 'Student'
+            }
+          } catch (e) {
+            console.warn('Failed to parse user data for certificate:', e)
+          }
+        }
+        
         // Update local state immediately
         set((state) => {
           const already = state.certificates.find(c => c.courseId === courseId)
@@ -370,7 +396,7 @@ export const useCourseStore = create(
               id: certificateId,
               courseId,
               courseName,
-              userName,
+              userName: actualUserName,
               issuedAt: new Date().toISOString()
             })
           }
@@ -380,7 +406,7 @@ export const useCourseStore = create(
         const { userProgressAPI } = await import('../services/api.js')
         await userProgressAPI.addCertificate(courseId, certificateId, courseName)
         
-        console.log('✅ Certificate synced to database')
+        console.log('✅ Certificate synced to database with user name:', actualUserName)
       } catch (error) {
         console.error('Failed to sync certificate:', error)
       }

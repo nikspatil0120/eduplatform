@@ -192,21 +192,7 @@ const AdminLoginPage = () => {
           </div>
         </motion.div>
 
-        {/* Demo Credentials */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mt-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
-        >
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Demo Credentials:
-          </h4>
-          <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-            <div>Super Admin: superadmin@kiro.edu / admin123</div>
-            <div>Moderator: moderator@kiro.edu / mod123</div>
-          </div>
-        </motion.div>
+
       </div>
     </div>
   )
