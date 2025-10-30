@@ -1,6 +1,6 @@
 import { Server } from 'socket.io'
 import jwt from 'jsonwebtoken'
-import signalrService from './signalrService.js'
+// SignalR service removed - using Socket.IO only
 import notificationService from './notificationService.js'
 import chatService from './chatService.js'
 import { logger } from '../utils/logger.js'
@@ -11,7 +11,7 @@ class RealtimeService {
     this.connectedUsers = new Map() // userId -> socket mapping
     this.userSockets = new Map() // socketId -> userId mapping
     this.courseRooms = new Map() // courseId -> Set of userIds
-    this.useSignalR = process.env.AZURE_SIGNALR_CONNECTION_STRING ? true : false
+    this.useSignalR = false // SignalR not used in this project
   }
 
   // Initialize Socket.IO server
@@ -406,7 +406,7 @@ class RealtimeService {
   async sendNotificationToUser(userId, notification) {
     try {
       if (this.useSignalR) {
-        await signalrService.sendNotification(userId, notification)
+        // SignalR not implemented
       } else {
         const socket = this.connectedUsers.get(userId)
         if (socket) {
@@ -430,7 +430,7 @@ class RealtimeService {
   async sendMessageToCourse(courseId, event, data) {
     try {
       if (this.useSignalR) {
-        await signalrService.sendToGroup(`course_${courseId}`, event, data)
+        // SignalR not implemented
       } else {
         this.io.to(`course_${courseId}`).emit(event, data)
       }
@@ -513,8 +513,7 @@ class RealtimeService {
   async broadcastSystemAnnouncement(announcement) {
     try {
       if (this.useSignalR) {
-        // Use SignalR to broadcast to all users
-        await signalrService.sendToGroup('all_users', 'system_announcement', announcement)
+        // SignalR not implemented
       } else {
         // Use Socket.IO to broadcast to all connected users
         this.io.emit('system_announcement', {

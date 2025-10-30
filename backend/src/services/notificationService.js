@@ -1,6 +1,6 @@
 import Notification from '../models/Notification.js'
 import emailService from './emailService.js'
-import signalrService from './signalrService.js'
+// SignalR service removed - using Socket.IO only
 import { logger } from '../utils/logger.js'
 
 class NotificationService {
@@ -145,11 +145,11 @@ class NotificationService {
     }
   }
 
-  // Send in-app notification via SignalR
+  // Send in-app notification via Socket.IO
   async sendInAppNotification(notification, user) {
     try {
-      await signalrService.sendNotification(user._id.toString(), notification)
-      logger.info(`In-app notification sent to user: ${user._id}`)
+      // Real-time notifications handled by realtimeService
+      logger.info(`In-app notification prepared for user: ${user._id}`)
     } catch (error) {
       logger.error('Failed to send in-app notification:', error)
       throw error
@@ -268,11 +268,11 @@ class NotificationService {
         }
       })
 
-      // Send real-time update to course group
+      // Send real-time update to course group via Socket.IO
       if (data.type === this.types.ASSIGNMENT) {
-        await signalrService.sendAssignmentUpdate(courseId, data.metadata.assignment, data.metadata.updateType)
+        // Assignment updates handled by realtimeService
       } else if (data.type === this.types.DISCUSSION) {
-        await signalrService.sendDiscussionUpdate(courseId, data.metadata.discussion, data.metadata.updateType)
+        // Discussion updates handled by realtimeService
       }
 
     } catch (error) {

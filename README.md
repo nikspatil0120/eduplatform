@@ -1,12 +1,12 @@
 # 🎓 EduPlatform - Complete Learning Management System
 
-A modern, enterprise-grade Learning Management System with advanced admin portal, real-time features, and Azure cloud integration.
+A modern, enterprise-grade Learning Management System with advanced admin portal, real-time features, and cloud integration.
 
 ![EduPlatform](https://img.shields.io/badge/EduPlatform-v1.0.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61dafb.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)
 ![MongoDB](https://img.shields.io/badge/MongoDB-6.x-green.svg)
-![Azure](https://img.shields.io/badge/Azure-Cloud-blue.svg)
+![Cloud](https://img.shields.io/badge/Cloud-Services-blue.svg)
 
 ## 🚀 **Features**
 
@@ -15,7 +15,7 @@ A modern, enterprise-grade Learning Management System with advanced admin portal
 - ✅ **Interactive Assignments** - File submissions, automated grading
 - ✅ **Real-time Chat System** - Course-based messaging with file sharing
 - ✅ **Note-taking System** - Rich text notes with course integration
-- ✅ **Video Streaming** - Azure Media Services integration
+- ✅ **Video Streaming** - Cloudinary video integration
 - ✅ **Discussion Forums** - Threaded discussions with moderation
 - ✅ **Learning Paths** - Structured course sequences
 - ✅ **Digital Certificates** - Automated certificate generation
@@ -58,18 +58,20 @@ A modern, enterprise-grade Learning Management System with advanced admin portal
 - **Socket.IO** - Real-time communication
 - **Bull Queue** - Background job processing
 
-### **Cloud Services (Azure)**
-- **Azure Blob Storage** - File management
-- **Azure Media Services** - Video processing
-- **Azure SignalR** - Scalable real-time communication
-- **Azure Cognitive Search** - Enterprise search capabilities
+### **Cloud Services**
+- **Vercel** - Frontend hosting and CDN
+- **Render** - Backend API hosting
+- **MongoDB Atlas** - Cloud database
+- **Cloudinary** - Media management and CDN
+- **EmailJS** - Email notifications
+- **Google OAuth** - Authentication service
 
 ## 🚀 **Quick Start**
 
 ### **Prerequisites**
 - Node.js (v18 or higher)
 - MongoDB (v6 or higher)
-- Azure account (optional, for cloud features)
+- Cloud service accounts (for deployment and features)
 
 ### **Installation**
 
@@ -114,10 +116,10 @@ A modern, enterprise-grade Learning Management System with advanced admin portal
    JWT_REFRESH_SECRET=your_jwt_refresh_secret
    FRONTEND_URL=http://localhost:3000
    
-   # Azure Services (Optional)
-   AZURE_STORAGE_CONNECTION_STRING=your_azure_storage_connection
-   AZURE_MEDIA_SERVICES_ACCOUNT_NAME=your_media_account
-   SIGNALR_CONNECTION_STRING=your_signalr_connection
+   # Cloudinary Configuration
+   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+   CLOUDINARY_API_KEY=your_cloudinary_api_key
+   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
    
    # Email Service (Optional)
    SMTP_HOST=your_smtp_host
@@ -209,14 +211,14 @@ eduplatform/
 ## 🚀 **Deployment**
 
 ### **Production Deployment**
-1. **Azure Static Web Apps** (Frontend)
-2. **Azure App Service** (Backend)
-3. **Azure Cosmos DB** (Database)
-4. **Azure CDN** (Static assets)
+1. **Vercel** (Frontend hosting)
+2. **Render** (Backend hosting)
+3. **MongoDB Atlas** (Database)
+4. **Cloudinary** (Media storage and CDN)
 
 ### **Environment Configuration**
 - Update environment variables for production
-- Configure Azure services
+- Configure cloud services (Vercel, Render, MongoDB Atlas, Cloudinary)
 - Set up CI/CD pipeline
 - Configure custom domain and SSL
 
@@ -237,7 +239,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - React team for the amazing framework
 - Tailwind CSS for the utility-first CSS framework
 - Framer Motion for smooth animations
-- Azure team for cloud services
+- Cloud service providers for reliable infrastructure
 - MongoDB for the flexible database
 - All contributors and testers
 
