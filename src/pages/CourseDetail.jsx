@@ -10,6 +10,7 @@ import {
   Pause, 
   Volume2, 
   Maximize, 
+  Star,
   Clock, 
   Users, 
   Award,
