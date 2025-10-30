@@ -133,6 +133,10 @@ CURRENT_STATUS.md
 **/secrets/
 **/private/
 
+# Viva and documentation files (local only)
+VIVA_PREPARATION_GUIDE.md
+CLOUD_SERVICES_DETAILED_GUIDE.md
+
 # Development and debug files
 src/components/debug/
 *debug*
@@ -162,3 +166,5 @@ coverage/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+VIVA_PREPARATION_GUIDE.md
+VIVA_PREPARATION_GUIDE.md

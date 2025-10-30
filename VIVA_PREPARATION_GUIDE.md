@@ -218,16 +218,11 @@ Frontend (Vercel) → Backend (Render) → Database (MongoDB Atlas)
 ## ⚡ Real-time Features
 
 ### Socket.IO Implementation
-- **Real-time Chat**: Course-based messaging
-- **Live Notifications**: Instant updates
-- **User Presence**: Online/offline status
-- **Typing Indicators**: Enhanced chat experience
-
-### Socket.IO Implementation
 - **Real-time Communication**: WebSocket-based messaging
 - **Room Management**: Course-based chat rooms
 - **Event Handling**: Custom events for different actions
 - **Connection Management**: Automatic reconnection handling
+- **User Presence**: Online/offline status tracking
 
 ---
 
