@@ -673,14 +673,7 @@ const CourseDetail = () => {
                   )}
                 </motion.button>
                 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full btn-secondary text-lg py-3"
-                >
-                  Add to Wishlist
-                </motion.button>
-                
+
                 {!isEnrolled && (
                   <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                     <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center justify-center space-x-2">
