@@ -5,7 +5,6 @@ import {
   BookOpen, 
   Clock, 
   Award, 
-  TrendingUp, 
   Calendar,
   Bell,
   Play,
@@ -21,7 +20,7 @@ const Dashboard = () => {
   const { user, isAuthenticated } = useAuth()
   const enrolled = useCourseStore((s) => s.enrolledCourses)
   const getTotalStudyTimeFormatted = useCourseStore((s) => s.getTotalStudyTimeFormatted)
-  const getStudyStreakSummary = useCourseStore((s) => s.getStudyStreakSummary)
+
   const certificates = useCourseStore((s) => s.listCertificates())
   const manualSync = useCourseStore((s) => s.manualSync)
   const [showCertModal, setShowCertModal] = useState(false)
@@ -85,8 +84,7 @@ const Dashboard = () => {
   const stats = [
     { label: 'Courses Enrolled', value: String(enrolled.length || 0), icon: BookOpen, color: 'bg-blue-500', change: '0 this month' },
     { label: 'Hours Learned', value: getTotalStudyTimeFormatted(), icon: Clock, color: 'bg-green-500', change: 'watch time' },
-    { label: 'Certificates', value: String(certificates.length || 0), icon: Award, color: 'bg-yellow-500', change: `${certificates.length} total` },
-    { label: 'Study Streak', value: String(useCourseStore.getState().getStudyActivityDays().length || 0), icon: TrendingUp, color: 'bg-purple-500', change: getStudyStreakSummary(7) }
+    { label: 'Certificates', value: String(certificates.length || 0), icon: Award, color: 'bg-yellow-500', change: `${certificates.length} total` }
   ]
 
   return (

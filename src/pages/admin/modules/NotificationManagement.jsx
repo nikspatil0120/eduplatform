@@ -224,68 +224,7 @@ const NotificationManagement = () => {
         </motion.button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Sent</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {notifications.filter(n => n.status === 'sent').length}
-              </p>
-            </div>
-            <Send className="w-8 h-8 text-green-600" />
-          </div>
-        </motion.div>
 
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Scheduled</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {notifications.filter(n => n.status === 'scheduled').length}
-              </p>
-            </div>
-            <Calendar className="w-8 h-8 text-blue-600" />
-          </div>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Draft</p>
-              <p className="text-2xl font-bold text-gray-600">
-                {notifications.filter(n => n.status === 'draft').length}
-              </p>
-            </div>
-            <Bell className="w-8 h-8 text-gray-600" />
-          </div>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Recipients</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {notifications.reduce((sum, n) => sum + (n.recipientCount || 0), 0)}
-              </p>
-            </div>
-            <Users className="w-8 h-8 text-purple-600" />
-          </div>
-        </motion.div>
-      </div>
 
       {/* Filters */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
