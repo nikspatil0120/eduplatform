@@ -15,6 +15,18 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// Helper functions for time conversion
+const secondsToHMS = (seconds) => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  return { hours, minutes, seconds: secs }
+}
+
+const hmsToSeconds = (hours, minutes, seconds) => {
+  return (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0)
+}
+
 const CourseCreation = ({ onClose, onSave }) => {
   const [courseData, setCourseData] = useState({
     title: '',
@@ -500,13 +512,49 @@ const CourseCreation = ({ onClose, onSave }) => {
                                           autoFocus
                                         />
                                         <div className="flex items-center space-x-2">
-                                          <input
-                                            type="number"
-                                            placeholder="Duration (seconds)"
-                                            value={subSegment.duration}
-                                            onChange={(e) => updateSubSegmentField(segment.id, subSegment.id, 'duration', parseInt(e.target.value) || 300)}
-                                            className="w-24 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                          />
+                                          <div className="flex items-center space-x-1">
+                                            <input
+                                              type="number"
+                                              placeholder="HH"
+                                              value={secondsToHMS(subSegment.duration).hours}
+                                              onChange={(e) => {
+                                                const { minutes, seconds } = secondsToHMS(subSegment.duration)
+                                                const newDuration = hmsToSeconds(e.target.value, minutes, seconds)
+                                                updateSubSegmentField(segment.id, subSegment.id, 'duration', newDuration)
+                                              }}
+                                              className="w-12 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                                              min="0"
+                                              max="23"
+                                            />
+                                            <span className="text-gray-500">:</span>
+                                            <input
+                                              type="number"
+                                              placeholder="MM"
+                                              value={secondsToHMS(subSegment.duration).minutes}
+                                              onChange={(e) => {
+                                                const { hours, seconds } = secondsToHMS(subSegment.duration)
+                                                const newDuration = hmsToSeconds(hours, e.target.value, seconds)
+                                                updateSubSegmentField(segment.id, subSegment.id, 'duration', newDuration)
+                                              }}
+                                              className="w-12 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                                              min="0"
+                                              max="59"
+                                            />
+                                            <span className="text-gray-500">:</span>
+                                            <input
+                                              type="number"
+                                              placeholder="SS"
+                                              value={secondsToHMS(subSegment.duration).seconds}
+                                              onChange={(e) => {
+                                                const { hours, minutes } = secondsToHMS(subSegment.duration)
+                                                const newDuration = hmsToSeconds(hours, minutes, e.target.value)
+                                                updateSubSegmentField(segment.id, subSegment.id, 'duration', newDuration)
+                                              }}
+                                              className="w-12 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                                              min="0"
+                                              max="59"
+                                            />
+                                          </div>
                                           <button
                                             onClick={() => setEditingSubSegment(null)}
                                             className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
