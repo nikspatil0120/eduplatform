@@ -2,17 +2,13 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { 
-  Play, 
   Users, 
   Award, 
   BookOpen, 
   Clock, 
-  Star,
   ArrowRight,
-  CheckCircle,
   Zap,
-  Globe,
-  Shield
+  Globe
 } from 'lucide-react'
 
 const LandingPage = () => {
@@ -49,26 +45,7 @@ const LandingPage = () => {
     }
   ]
 
-  const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'Software Developer',
-      image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150',
-      content: 'EduPlatform transformed my career. The courses are comprehensive and the instructors are amazing!'
-    },
-    {
-      name: 'Michael Chen',
-      role: 'Data Scientist',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      content: 'The interactive learning experience and community support made all the difference in my journey.'
-    },
-    {
-      name: 'Emily Rodriguez',
-      role: 'UX Designer',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
-      content: 'I love how I can learn at my own pace while still feeling connected to other students.'
-    }
-  ]
+
 
 
 
@@ -194,60 +171,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20 bg-white dark:bg-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              What Our Students Say
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
-              Join thousands of satisfied learners who transformed their careers
-            </p>
-          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={testimonial.name}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.2 }}
-                className="card p-6"
-              >
-                <div className="flex items-center mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 mb-6 italic">
-                  "{testimonial.content}"
-                </p>
-                <div className="flex items-center">
-                  <img
-                    src={testimonial.image}
-                    alt={testimonial.name}
-                    className="h-12 w-12 rounded-full mr-4"
-                  />
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">
-                      {testimonial.name}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {testimonial.role}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20 gradient-bg">
