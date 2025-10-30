@@ -138,7 +138,7 @@ const Navbar = () => {
                       className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
                     >
                       <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
+                      {unreadCount > 0 && isAuthenticated && (
                         <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </span>

@@ -29,16 +29,8 @@ const NotificationCenter = () => {
         }
       } catch (error) {
         console.error('Failed to fetch notifications:', error)
-        // Fallback to mock data if API fails
-        setNotifications([
-          {
-            id: 'mock-1',
-            title: 'Welcome to EduPlatform!',
-            message: 'Start exploring courses and begin your learning journey.',
-            time: '2 hours ago',
-            read: false
-          }
-        ])
+        // Don't show mock data to avoid false notification badges
+        setNotifications([])
       } finally {
         setLoading(false)
       }

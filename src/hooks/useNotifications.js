@@ -11,17 +11,21 @@ export const useNotifications = () => {
     try {
       setLoading(true)
       const response = await notificationAPI.getUnreadCount()
+      
       if (response.data?.success) {
-        setUnreadCount(response.data.data?.count || 0)
+        const count = response.data.data?.count || 0
+        setUnreadCount(count)
+      } else {
+        // If API call succeeds but returns no success, set count to 0
+        setUnreadCount(0)
       }
     } catch (error) {
+      // Always reset count on any error to avoid showing false notifications
+      setUnreadCount(0)
+      
       // Only log error if it's not a 401 (authentication error)
       if (error.response?.status !== 401) {
         console.error('Failed to fetch unread count:', error)
-      }
-      // Reset count on auth error
-      if (error.response?.status === 401) {
-        setUnreadCount(0)
       }
     } finally {
       setLoading(false)
@@ -29,13 +33,18 @@ export const useNotifications = () => {
   }
 
   useEffect(() => {
+    // Always reset count when authentication changes
+    setUnreadCount(0)
+    
     // Only fetch if user is authenticated
     if (!isAuthenticated) {
-      setUnreadCount(0)
       return
     }
     
-    fetchUnreadCount()
+    // Small delay to ensure auth is fully established
+    const timeoutId = setTimeout(() => {
+      fetchUnreadCount()
+    }, 500)
     
     // Refresh unread count every 2 minutes (less frequent to avoid spam)
     const interval = setInterval(() => {
@@ -44,7 +53,20 @@ export const useNotifications = () => {
       }
     }, 120000)
     
-    return () => clearInterval(interval)
+    // Listen for notification read events to refresh count immediately
+    const handleNotificationRead = () => {
+      if (isAuthenticated) {
+        fetchUnreadCount()
+      }
+    }
+    
+    window.addEventListener('notificationRead', handleNotificationRead)
+    
+    return () => {
+      clearTimeout(timeoutId)
+      clearInterval(interval)
+      window.removeEventListener('notificationRead', handleNotificationRead)
+    }
   }, [isAuthenticated])
 
   return {

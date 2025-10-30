@@ -53,6 +53,9 @@ const Notifications = () => {
                 )
             )
             toast.success('Notification marked as read')
+            
+            // Trigger a refresh of the unread count in the navbar
+            window.dispatchEvent(new CustomEvent('notificationRead'))
         } catch (error) {
             console.error('Failed to mark as read:', error)
             toast.error('Failed to mark as read')
@@ -66,6 +69,9 @@ const Notifications = () => {
                 prev.map(n => ({ ...n, readAt: new Date().toISOString() }))
             )
             toast.success('All notifications marked as read')
+            
+            // Trigger a refresh of the unread count in the navbar
+            window.dispatchEvent(new CustomEvent('notificationRead'))
         } catch (error) {
             console.error('Failed to mark all as read:', error)
             toast.error('Failed to mark all as read')
