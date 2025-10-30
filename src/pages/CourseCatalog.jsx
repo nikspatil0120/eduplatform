@@ -86,22 +86,8 @@ const CourseCatalog = () => {
     return matchesSearch && matchesCategory && matchesLevel
   })
 
-  const sortedCourses = [...filteredCourses].sort((a, b) => {
-    switch (sortBy) {
-      case 'popular':
-        return b.students - a.students
-      case 'rating':
-        return b.rating - a.rating
-      case 'price-low':
-        return a.price - b.price
-      case 'price-high':
-        return b.price - a.price
-      case 'newest':
-        return b.id - a.id
-      default:
-        return 0
-    }
-  })
+  // No sorting needed, just use filtered courses
+  const sortedCourses = filteredCourses
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
