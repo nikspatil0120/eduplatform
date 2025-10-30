@@ -1,7 +1,7 @@
 import express from 'express'
 import multer from 'multer'
 import { authenticate as auth } from '../middleware/auth.js'
-import azureStorageService from '../services/azureStorage.js'
+import cloudinaryService from '../services/cloudinaryService.js'
 import { logger } from '../utils/logger.js'
 
 const router = express.Router()
@@ -46,7 +46,7 @@ router.post('/single', auth, upload.single('file'), async (req, res) => {
       }
     }
 
-    const result = await azureStorageService.uploadFile(req.file, options)
+    const result = await cloudinaryService.uploadFile(req.file, options)
 
     res.json({
       success: true,
@@ -81,7 +81,7 @@ router.post('/multiple', auth, upload.array('files', 10), async (req, res) => {
       }
     }
 
-    const result = await azureStorageService.uploadMultipleFiles(req.files, options)
+    const result = await cloudinaryService.uploadMultipleFiles(req.files, options)
 
     res.json({
       success: true,
@@ -99,10 +99,10 @@ router.post('/multiple', auth, upload.array('files', 10), async (req, res) => {
 })
 
 // Get file info
-router.get('/info/:blobName(*)', auth, async (req, res) => {
+router.get('/info/:publicId(*)', auth, async (req, res) => {
   try {
-    const blobName = req.params.blobName
-    const result = await azureStorageService.getFileInfo(blobName)
+    const publicId = req.params.publicId
+    const result = await cloudinaryService.getFileInfo(publicId)
 
     if (!result.success) {
       return res.status(404).json({
@@ -125,10 +125,10 @@ router.get('/info/:blobName(*)', auth, async (req, res) => {
 })
 
 // Delete file
-router.delete('/:blobName(*)', auth, async (req, res) => {
+router.delete('/:publicId(*)', auth, async (req, res) => {
   try {
-    const blobName = req.params.blobName
-    const result = await azureStorageService.deleteFile(blobName)
+    const publicId = req.params.publicId
+    const result = await cloudinaryService.deleteFile(publicId)
 
     res.json({
       success: result.success,
@@ -146,23 +146,22 @@ router.delete('/:blobName(*)', auth, async (req, res) => {
 // Generate secure access URL
 router.post('/secure-url', auth, async (req, res) => {
   try {
-    const { blobName, expiresIn = 3600 } = req.body
+    const { publicId, expiresIn = 3600 } = req.body
 
-    if (!blobName) {
+    if (!publicId) {
       return res.status(400).json({
         success: false,
-        message: 'Blob name is required'
+        message: 'Public ID is required'
       })
     }
 
-    const result = await azureStorageService.generateSasUrl(blobName, {
-      permissions: 'r',
+    const result = await cloudinaryService.generateSecureUrl(publicId, {
       expiresIn
     })
 
     res.json({
       success: true,
-      secureUrl: result.sasUrl,
+      secureUrl: result.secureUrl,
       expiresAt: result.expiresAt
     })
   } catch (error) {

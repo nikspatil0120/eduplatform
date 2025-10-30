@@ -1,7 +1,7 @@
 {
   "name": "eduplatform-backend",
   "version": "1.0.0",
-  "description": "EduPlatform Backend API with Azure Integration",
+  "description": "EduPlatform Backend API with Cloud Integration",
   "main": "src/app.js",
   "type": "module",
   "engines": {
@@ -20,15 +20,8 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "@azure/communication-email": "^1.0.0",
-    "@azure/cosmos": "^4.0.0",
-    "@azure/identity": "^3.3.0",
-    "@azure/msal-node": "^2.1.0",
-    "@azure/search-documents": "^12.2.0",
-    "@azure/service-bus": "^7.9.0",
-    "@azure/storage-blob": "^12.15.0",
-    "@emailjs/nodejs": "^5.0.2",
-    "@sendgrid/mail": "^7.7.0",
+
+
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.7.0",
     "compression": "^1.7.4",
@@ -38,7 +31,7 @@
     "google-auth-library": "^9.0.0",
     "express-rate-limit": "^6.10.0",
     "express-validator": "^7.0.1",
-    "ffmpeg-static": "^5.2.0",
+
     "helmet": "^7.0.0",
     "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.2",
@@ -46,7 +39,6 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
-    "nodemailer": "^6.9.4",
     "sharp": "^0.32.5",
     "socket.io": "^4.7.2",
     "stripe": "^13.5.0",

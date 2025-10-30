@@ -38,7 +38,7 @@ import notificationRoutes from './routes/notifications.js'
 import profileRoutes from './routes/profile.js'
 import learningPathRoutes from './routes/learningPaths.js'
 import certificateRoutes from './routes/certificates.js'
-import chatRoutes from './routes/chat.js'
+// Chat routes removed - not used in this project
 import systemRoutes from './routes/system.js'
 import queueRoutes from './routes/queues.js'
 import adminRoutes from './routes/admin.js'
@@ -171,7 +171,7 @@ app.use(`${API_PREFIX}/notifications`, notificationRoutes)
 app.use(`${API_PREFIX}/profile`, profileRoutes)
 app.use(`${API_PREFIX}/learning-paths`, learningPathRoutes)
 app.use(`${API_PREFIX}/certificates`, certificateRoutes)
-app.use(`${API_PREFIX}/chat`, chatRoutes)
+// Chat routes removed - not used in this project
 app.use(`${API_PREFIX}/system`, systemRoutes)
 app.use(`${API_PREFIX}/queues`, queueRoutes)
 app.use(`${API_PREFIX}/admin`, adminRoutes)
@@ -307,20 +307,7 @@ app.get(`${API_PREFIX}/docs`, (req, res) => {
         'GET /certificates/analytics/overview': 'Get certificate analytics (admin)',
         'POST /certificates/bulk-issue': 'Bulk issue certificates (admin)'
       },
-      chat: {
-        'POST /chat/messages': 'Send chat message',
-        'GET /chat/messages/:courseId': 'Get chat messages for course',
-        'PUT /chat/messages/:id': 'Edit chat message',
-        'DELETE /chat/messages/:id': 'Delete chat message',
-        'POST /chat/messages/:id/reactions': 'Add reaction to message',
-        'DELETE /chat/messages/:id/reactions': 'Remove reaction from message',
-        'POST /chat/typing': 'Handle typing indicator',
-        'POST /chat/join/:courseId': 'Join course chat',
-        'POST /chat/leave/:courseId': 'Leave course chat',
-        'GET /chat/analytics/:courseId': 'Get chat analytics (instructor/admin)',
-        'GET /chat/search': 'Search messages (admin)',
-        'DELETE /chat/cleanup': 'Cleanup old messages (admin)'
-      },
+
       userProgress: {
         'GET /user-progress': 'Get all user progress',
         'GET /user-progress/:courseId': 'Get user progress for specific course',

@@ -5,7 +5,7 @@ import multer from 'multer'
 import Assignment from '../models/Assignment.js'
 import AssignmentSubmission from '../models/AssignmentSubmission.js'
 import { authenticate as auth } from '../middleware/auth.js'
-import azureStorageService from '../services/azureStorage.js'
+import cloudinaryService from '../services/cloudinaryService.js'
 import { logger } from '../utils/logger.js'
 
 const router = express.Router()
@@ -110,7 +110,7 @@ router.post('/', submissionLimiter, upload.array('files', 10), [
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         try {
-          const uploadResult = await azureStorageService.uploadFile(file, {
+          const uploadResult = await cloudinaryService.uploadFile(file, {
             folder: `submissions/${assignmentId}/${req.user.id}`,
             metadata: {
               studentId: req.user.id,

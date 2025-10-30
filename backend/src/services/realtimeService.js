@@ -2,7 +2,7 @@ import { Server } from 'socket.io'
 import jwt from 'jsonwebtoken'
 // SignalR service removed - using Socket.IO only
 import notificationService from './notificationService.js'
-import chatService from './chatService.js'
+// Chat service removed - not used in this project
 import { logger } from '../utils/logger.js'
 
 class RealtimeService {
@@ -159,10 +159,7 @@ class RealtimeService {
       }
       this.courseRooms.get(courseId).add(userId)
 
-      // Join chat if using Socket.IO
-      if (!this.useSignalR) {
-        await chatService.joinCourseChat(courseId, userId)
-      }
+      // Chat functionality not implemented in this project
 
       // Notify others in the course
       socket.to(`course_${courseId}`).emit('user_joined_course', {
@@ -197,10 +194,7 @@ class RealtimeService {
         this.courseRooms.get(courseId).delete(userId)
       }
 
-      // Leave chat if using Socket.IO
-      if (!this.useSignalR) {
-        await chatService.leaveCourseChat(courseId, userId)
-      }
+      // Chat functionality not implemented in this project
 
       // Notify others in the course
       socket.to(`course_${courseId}`).emit('user_left_course', {
@@ -228,32 +222,8 @@ class RealtimeService {
       const { courseId, content, type = 'text', replyTo } = data
       const userId = socket.userId
 
-      // Send message through chat service
-      const message = await chatService.sendMessage({
-        courseId,
-        senderId: userId,
-        content,
-        type,
-        replyTo,
-        metadata: {
-          source: 'socket.io'
-        }
-      })
-
-      // Broadcast to course room (if not using SignalR)
-      if (!this.useSignalR) {
-        this.io.to(`course_${courseId}`).emit('new_message', {
-          id: message._id,
-          courseId: message.courseId,
-          senderId: message.senderId,
-          senderName: message.senderName,
-          senderAvatar: message.senderAvatar,
-          content: message.content,
-          type: message.type,
-          replyTo: message.replyTo,
-          timestamp: message.createdAt
-        })
-      }
+      // Chat functionality not implemented in this project
+      socket.emit('error', { message: 'Chat feature not available' })
 
     } catch (error) {
       logger.error('Handle chat message error:', error)
@@ -267,17 +237,7 @@ class RealtimeService {
       const { courseId, isTyping } = data
       const userId = socket.userId
 
-      if (this.useSignalR) {
-        await chatService.handleTyping(courseId, userId, isTyping)
-      } else {
-        // Broadcast typing status to course room
-        socket.to(`course_${courseId}`).emit('user_typing', {
-          userId,
-          userName: socket.user.name,
-          isTyping,
-          timestamp: new Date()
-        })
-      }
+      // Chat functionality not implemented in this project
     } catch (error) {
       logger.error('Handle typing error:', error)
     }
@@ -289,18 +249,8 @@ class RealtimeService {
       const { messageId, emoji } = data
       const userId = socket.userId
 
-      const message = await chatService.addReaction(messageId, userId, emoji)
-
-      // Broadcast reaction update (if not using SignalR)
-      if (!this.useSignalR) {
-        this.io.to(`course_${message.courseId}`).emit('message_reaction', {
-          messageId: message._id,
-          userId,
-          emoji,
-          reactions: message.reactions,
-          timestamp: new Date()
-        })
-      }
+      // Chat functionality not implemented in this project
+      socket.emit('error', { message: 'Chat reactions not available' })
     } catch (error) {
       logger.error('Handle add reaction error:', error)
       socket.emit('error', { message: 'Failed to add reaction' })

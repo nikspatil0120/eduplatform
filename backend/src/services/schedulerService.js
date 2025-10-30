@@ -1,6 +1,6 @@
 import cron from 'node-cron'
 import notificationService from './notificationService.js'
-import chatService from './chatService.js'
+// Chat service removed - not used in this project
 import realtimeService from './realtimeService.js'
 import { logger } from '../utils/logger.js'
 
@@ -28,10 +28,7 @@ class SchedulerService {
         await this.sendAssignmentReminders()
       })
 
-      // Cleanup old chat messages daily at 2 AM
-      this.scheduleTask('cleanup-chat', '0 2 * * *', async () => {
-        await chatService.cleanupOldMessages(90) // Keep 90 days
-      })
+      // Chat cleanup removed - chat service not used in this project
 
       // Cleanup inactive real-time connections every 30 minutes
       this.scheduleTask('cleanup-connections', '*/30 * * * *', async () => {
