@@ -22,6 +22,18 @@ import toast from 'react-hot-toast'
 import adminApi from '../../../services/adminApi'
 import CourseCreation from './CourseCreation'
 
+// Helper functions for time conversion
+const secondsToHMS = (seconds) => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  return { hours, minutes, seconds: secs }
+}
+
+const hmsToSeconds = (hours, minutes, seconds) => {
+  return (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0)
+}
+
 const CourseManagement = () => {
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -501,20 +513,68 @@ const CourseManagement = () => {
                                 setSelectedCourse({ ...selectedCourse, curriculum: next })
                               }}
                             />
-                            <input
-                              type="number"
-                              className="px-3 py-2 rounded border dark:bg-gray-700"
-                              placeholder="Duration (sec)"
-                              value={les.videoDuration || ''}
-                              onChange={(e) => {
-                                const val = Number(e.target.value)
-                                const next = [...(selectedCourse.curriculum || [])]
-                                const lessons = [...(next[sIdx].lessons || [])]
-                                lessons[lIdx] = { ...lessons[lIdx], videoDuration: val }
-                                next[sIdx] = { ...next[sIdx], lessons }
-                                setSelectedCourse({ ...selectedCourse, curriculum: next })
-                              }}
-                            />
+                            <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={secondsToHMS(les.videoDuration || 0).hours}
+                                  onChange={(e) => {
+                                    const { minutes, seconds } = secondsToHMS(les.videoDuration || 0)
+                                    const newDuration = hmsToSeconds(e.target.value, minutes, seconds)
+                                    const next = [...(selectedCourse.curriculum || [])]
+                                    const lessons = [...(next[sIdx].lessons || [])]
+                                    lessons[lIdx] = { ...lessons[lIdx], videoDuration: newDuration }
+                                    next[sIdx] = { ...next[sIdx], lessons }
+                                    setSelectedCourse({ ...selectedCourse, curriculum: next })
+                                  }}
+                                  className="w-12 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                                  min="0"
+                                  max="23"
+                                />
+                                <span className="text-xs text-gray-500 dark:text-gray-400">hr</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={secondsToHMS(les.videoDuration || 0).minutes}
+                                  onChange={(e) => {
+                                    const { hours, seconds } = secondsToHMS(les.videoDuration || 0)
+                                    const newDuration = hmsToSeconds(hours, e.target.value, seconds)
+                                    const next = [...(selectedCourse.curriculum || [])]
+                                    const lessons = [...(next[sIdx].lessons || [])]
+                                    lessons[lIdx] = { ...lessons[lIdx], videoDuration: newDuration }
+                                    next[sIdx] = { ...next[sIdx], lessons }
+                                    setSelectedCourse({ ...selectedCourse, curriculum: next })
+                                  }}
+                                  className="w-12 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                                  min="0"
+                                  max="59"
+                                />
+                                <span className="text-xs text-gray-500 dark:text-gray-400">min</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={secondsToHMS(les.videoDuration || 0).seconds}
+                                  onChange={(e) => {
+                                    const { hours, minutes } = secondsToHMS(les.videoDuration || 0)
+                                    const newDuration = hmsToSeconds(hours, minutes, e.target.value)
+                                    const next = [...(selectedCourse.curriculum || [])]
+                                    const lessons = [...(next[sIdx].lessons || [])]
+                                    lessons[lIdx] = { ...lessons[lIdx], videoDuration: newDuration }
+                                    next[sIdx] = { ...next[sIdx], lessons }
+                                    setSelectedCourse({ ...selectedCourse, curriculum: next })
+                                  }}
+                                  className="w-12 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-center"
+                                  min="0"
+                                  max="59"
+                                />
+                                <span className="text-xs text-gray-500 dark:text-gray-400">sec</span>
+                              </div>
+                            </div>
                             <textarea
                               className="col-span-5 px-3 py-2 rounded border dark:bg-gray-700"
                               placeholder="Description"
