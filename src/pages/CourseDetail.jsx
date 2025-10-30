@@ -10,15 +10,13 @@ import {
   Pause, 
   Volume2, 
   Maximize, 
-  Star, 
   Clock, 
   Users, 
   Award,
   BookOpen,
   CheckCircle,
   Lock,
-  MessageCircle,
-  Share2
+  MessageCircle
 } from 'lucide-react'
 
 const CourseDetail = () => {
@@ -38,7 +36,7 @@ const CourseDetail = () => {
   const completedOnceRef = useRef(false)
   const progressIntervalRef = useRef(null)
   const ytScriptLoadedRef = useRef(false)
-  const [notes, setNotes] = useState('')
+
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState(false)
@@ -312,22 +310,14 @@ const CourseDetail = () => {
   const tabs = [
     { id: 'overview', name: 'Overview' },
     { id: 'curriculum', name: 'Curriculum' },
-    { id: 'instructor', name: 'Instructor' },
-    { id: 'reviews', name: 'Reviews' },
-    { id: 'notes', name: 'My Notes' }
+    { id: 'instructor', name: 'Instructor' }
   ]
 
   // Derived completion state
   const totalLessons = (course?.curriculum || []).reduce((sum, s) => sum + (s.lessons?.length || 0), 0)
   const isCompleted = isCourseFullyCompleted(course.id, totalLessons)
 
-  // Safe reviews source to prevent runtime errors when opening the Reviews tab
-  const reviews = (course && Array.isArray(course.reviews) && course.reviews.length > 0)
-    ? course.reviews
-    : [
-        { id: 'rv-1', user: 'Jane Doe', rating: 5, date: '2 days ago', comment: 'Excellent course with clear explanations!' , avatar: 'https://i.pravatar.cc/80?img=1' },
-        { id: 'rv-2', user: 'Alex Kim', rating: 4, date: '1 week ago', comment: 'Great content and pacing. Highly recommend.' , avatar: 'https://i.pravatar.cc/80?img=2' }
-      ]
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -605,74 +595,9 @@ const CourseDetail = () => {
                 </div>
               )}
 
-            {activeTab === 'reviews' && (
-              <div className="space-y-6">
-                {reviews.map((review) => (
-                    <div key={review.id} className="card p-6">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                          {review.user ? review.user.charAt(0).toUpperCase() : 'U'}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-gray-900 dark:text-white">
-                              {review.user}
-                            </h4>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {review.date}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-1 mb-3">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i < review.rating
-                                    ? 'text-yellow-400 fill-current'
-                                    : 'text-gray-300 dark:text-gray-600'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <p className="text-gray-700 dark:text-gray-300">
-                            {review.comment}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
-              {activeTab === 'notes' && (
-                <div className="card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      My Notes
-                    </h3>
-                    <div className="flex items-center space-x-2">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                      >
-                        Save
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        className="text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </motion.button>
-                    </div>
-                  </div>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Take notes while watching the course..."
-                    className="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-              )}
+
+
             </motion.div>
 
             {/* Join Now button at end of main content */}
