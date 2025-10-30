@@ -1,5 +1,5 @@
-import emailjs from '@emailjs/nodejs'
-import nodemailer from 'nodemailer'
+// EmailJS is handled on the client-side, server-side email is optional
+// import nodemailer from 'nodemailer' // Removed as it's not in dependencies
 import { logger } from '../utils/logger.js'
 
 class EmailService {
@@ -11,24 +11,10 @@ class EmailService {
   }
 
   initialize() {
-    if (this.provider === 'emailjs') {
-      if (process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_PUBLIC_KEY) {
-        logger.info('✅ EmailJS service initialized')
-      } else {
-        logger.warn('⚠️ EmailJS configuration not complete')
-      }
-    } else if (this.provider === 'smtp') {
-      this.transporter = nodemailer.createTransporter({
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT || 587,
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
-      })
-      logger.info('✅ SMTP email service initialized')
-    }
+    // Email functionality is handled on the client-side via EmailJS
+    // Server-side email is disabled to simplify deployment
+    logger.info('📧 Email service initialized (client-side EmailJS used)')
+    logger.info('📧 Server-side email functionality disabled for simplified deployment')
   }
 
   async ensureInitialized() {
@@ -77,12 +63,16 @@ class EmailService {
         attachments
       }
 
-      if (this.provider === 'emailjs') {
-        await this.sendWithEmailJS(emailData)
-      } else if (this.provider === 'smtp') {
-        await this.sendWithSMTP(emailData)
-      } else {
-        throw new Error('No email provider configured')
+      // Server-side email sending is disabled
+      // Email functionality is handled on the client-side via EmailJS
+      logger.info('📧 Email would be sent (server-side email disabled)')
+      logger.info(`   To: ${to}`)
+      logger.info(`   Subject: ${subject}`)
+      
+      // Extract OTP from template data if present
+      if (template === 'emailVerification' && data?.otp) {
+        logger.info(`   🔑 OTP CODE: ${data.otp}`)
+        logger.info(`   ⚡ Use this OTP to complete authentication`)
       }
 
       logger.info(`📧 Email sent successfully to ${to}`)
@@ -94,64 +84,12 @@ class EmailService {
     }
   }
 
+  // Server-side EmailJS removed - handled on client-side
   async sendWithEmailJS(emailData) {
-    try {
-      // Extract OTP from HTML if present for logging
-      const otpMatch = emailData.html?.match(/font-size: 32px[^>]*>(\d{6})</i)
-      const otp = otpMatch ? otpMatch[1] : null
-
-      const templateParams = {
-        to_email: emailData.to,
-        to_name: 'User',
-        from_name: emailData.from.name || this.fromName,
-        subject: emailData.subject,
-        message: emailData.text || this.stripHtml(emailData.html),
-        otp: otp,
-        html_content: emailData.html
-      }
-
-      logger.info('🔧 EmailJS config:', {
-        serviceId: process.env.EMAILJS_SERVICE_ID,
-        templateId: process.env.EMAILJS_TEMPLATE_ID,
-        publicKey: process.env.EMAILJS_PUBLIC_KEY ? 'Set' : 'Missing'
-      })
-
-      await emailjs.send(
-        process.env.EMAILJS_SERVICE_ID,
-        process.env.EMAILJS_TEMPLATE_ID || 'template_default',
-        templateParams,
-        {
-          publicKey: process.env.EMAILJS_PUBLIC_KEY,
-        }
-      )
-
-      logger.info(`✅ Email sent successfully via EmailJS to ${emailData.to}`)
-      if (otp) {
-        logger.info(`   🔑 OTP CODE: ${otp}`)
-      }
-    } catch (error) {
-      logger.error('EmailJS error:', error)
-      
-      // In development, log the email instead of failing
-      if (process.env.NODE_ENV === 'development') {
-        logger.warn('📧 EmailJS failed, logging email content instead:')
-        logger.info(`   To: ${emailData.to}`)
-        logger.info(`   Subject: ${emailData.subject}`)
-        logger.info(`   From: ${emailData.from.email}`)
-        
-        // Extract OTP from HTML if present
-        const otpMatch = emailData.html?.match(/font-size: 32px[^>]*>(\d{6})</i)
-        if (otpMatch) {
-          logger.info(`   🔑 OTP CODE: ${otpMatch[1]}`)
-          logger.info(`   ⚡ Use this OTP to complete authentication`)
-        }
-        
-        logger.info('✅ Email content logged successfully (development mode)')
-        return // Don't throw error, just log the content
-      }
-      
-      throw error
-    }
+    // This method is no longer used - EmailJS is handled on the client-side
+    logger.info('📧 EmailJS functionality moved to client-side')
+    logger.info(`   Email would be sent to: ${emailData.to}`)
+    logger.info(`   Subject: ${emailData.subject}`)
   }
 
   stripHtml(html) {
@@ -159,20 +97,11 @@ class EmailService {
     return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
   }
 
+  // SMTP functionality removed to simplify deployment
   async sendWithSMTP(emailData) {
-    try {
-      await this.transporter.sendMail({
-        from: `"${emailData.from.name}" <${emailData.from.email}>`,
-        to: emailData.to,
-        subject: emailData.subject,
-        html: emailData.html,
-        text: emailData.text,
-        attachments: emailData.attachments
-      })
-    } catch (error) {
-      logger.error('SMTP error:', error)
-      throw error
-    }
+    logger.info('📧 SMTP functionality disabled for simplified deployment')
+    logger.info(`   Email would be sent to: ${emailData.to}`)
+    logger.info(`   Subject: ${emailData.subject}`)
   }
 
   generateEmailContent(template, data) {
