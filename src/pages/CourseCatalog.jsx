@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { 
   Search, 
-  Filter, 
   Star, 
   Clock, 
   Users, 
@@ -24,7 +23,7 @@ const CourseCatalog = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedLevel, setSelectedLevel] = useState('all')
-  const [sortBy, setSortBy] = useState('popular')
+
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -155,15 +154,7 @@ const CourseCatalog = () => {
                 <option value="advanced">Advanced</option>
               </select>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="popular">Most Popular</option>
-                <option value="rating">Highest Rated</option>
-                <option value="newest">Newest</option>
-              </select>
+
             </div>
           </div>
         </motion.div>
